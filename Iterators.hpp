@@ -171,6 +171,10 @@ namespace iterators {
             zip<Readonly, impl::CounterContainer, Container>(ctr, c) {}
     };
 
+    /**
+     * enumerate specialization that does not allow manipulation of the container elements
+     * @tparam Container Container type that supports iteration
+     */
     template<typename Container>
     struct const_enumerate : public enumerate<Container, true> {
         explicit const_enumerate(Container &c) : enumerate<Container, true>(c) {}
