@@ -47,21 +47,15 @@ namespace iterators {
             }
 
             auto operator*() {
-                return dereference(RonlyDummy<Readonly>{});
+                if constexpr(Readonly) {
+                    return std::apply([this] (auto &&...it) { return cValueTuple(*it...); }, iterators);
+
+                } else {
+                    return std::apply([this] (auto &&...it) { return ValueTuple(*it...); }, iterators);
+                }
             }
 
         private:
-            template<bool B>
-            struct RonlyDummy{};
-
-            auto dereference(RonlyDummy<false>) -> ValueTuple {
-                return std::apply([this] (auto &&...it) { return ValueTuple(*it...); }, iterators);
-            }
-
-            auto dereference(RonlyDummy<true>) -> cValueTuple {
-                return std::apply([this] (auto &&...it) { return ValueTuple(*it...); }, iterators);
-            }
-
             template<std::size_t N>
             [[nodiscard]] constexpr bool equal(const IteratorTuple &other, bool oneNotEqual = false) const {
                 if constexpr(N == std::tuple_size_v<IteratorTuple>) {
