@@ -8,9 +8,21 @@
 #include <tuple>
 
 namespace iterators {
+    /**
+     * Class that can be used in range based loops to emulate the zip iterator from python.
+     * As in python: if the passed containers have different lengths, the container with the least items decides
+     * the overall range
+     * @tparam Readonly Whether the elements in the containers can be manipulated
+     * @tparam Iterable Container types that support iteration
+     */
     template<bool Readonly = false, typename ...Iterable>
     struct zip {
+        /**
+         * Ctor
+         * @param containers Arbitrary number of iterable containers
+         */
         explicit zip(Iterable &...containers) : containers(containers...) {}
+
         class ZipIterator {
             using IteratorTuple = std::tuple<decltype(std::begin(
                     std::declval<std::add_lvalue_reference_t<Iterable>>()))...>;
@@ -74,10 +86,18 @@ namespace iterators {
             IteratorTuple ends;
         };
 
+        /**
+         * Returns a ZipIterator to the beginning of the sequence
+         * @return
+         */
         ZipIterator begin() {
             return ZipIterator(containers);
         }
 
+        /**
+         * Returns a ZipIterator to the past-the-end element of the sequence. Do not dereference!
+         * @return
+         */
         ZipIterator end() {
             return ZipIterator(containers, ZipIterator::Construct::End);
         }
@@ -86,6 +106,10 @@ namespace iterators {
         std::tuple<Iterable &...> containers;
     };
 
+    /**
+     * zip specialization that does not allow manipulation of the container elements
+     * @tparam Iterable Container types that support iteration
+     */
     template<typename ...Iterable>
     struct const_zip : public zip<true, Iterable...> {
         explicit const_zip(Iterable &...iterable) : zip<true, Iterable...>(iterable...) {}
@@ -136,6 +160,11 @@ namespace iterators {
         };
     }
 
+    /**
+     * Class that can be used in range based loops to emulate the enumerate iterator from python.
+     * @tparam Container Container type that supports iteration
+     * @tparam Readonly Whether the elements in the container can be manipulated
+     */
     template<typename Container, bool Readonly = false>
     struct enumerate : public zip<Readonly, impl::CounterContainer, Container> {
         explicit enumerate(Container &c, impl::CounterContainer ctr = impl::CounterContainer{}) :
