@@ -60,10 +60,10 @@ namespace iterators {
 
             auto operator*() {
                 if constexpr(Readonly) {
-                    return std::apply([this] (auto &&...it) { return cValueTuple(*it...); }, iterators);
+                    return std::apply([] (auto &&...it) { return cValueTuple(*it...); }, iterators);
 
                 } else {
-                    return std::apply([this] (auto &&...it) { return ValueTuple(*it...); }, iterators);
+                    return std::apply([] (auto &&...it) { return ValueTuple(*it...); }, iterators);
                 }
             }
 
