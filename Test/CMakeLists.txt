@@ -1,0 +1,13 @@
+project(Tests)
+
+enable_testing()
+find_package(GTest)
+if (GTest_FOUND)
+    include_directories(${GTEST_INCLUDE_DIR})
+    include_directories(${CMAKE_SOURCE_DIR})
+    add_executable(${PROJECT_NAME} main.cpp Iterators.cpp)
+    target_link_libraries(${PROJECT_NAME} ${LIBS} gmock gtest pthread)
+    add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME})
+else()
+    message(WARNING "Failed to locate GTest. You won't be able to run the tests.")
+endif()
