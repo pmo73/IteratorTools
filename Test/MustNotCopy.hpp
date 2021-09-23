@@ -1,13 +1,8 @@
-//
-// Created by tim on 22.06.21.
-//
-
 #ifndef BIDIRECTIONALMAP_MUSTNOTCOPY_HPP
 #define BIDIRECTIONALMAP_MUSTNOTCOPY_HPP
 
 #include <string>
 #include <gtest/gtest.h>
-#include <unordered_map>
 
 class MustNotCopy {
 public:

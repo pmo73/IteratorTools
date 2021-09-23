@@ -1,7 +1,3 @@
-//
-// Created by tim on 22.06.21.
-//
-
 #include "MustNotCopy.hpp"
 
 MustNotCopy::MustNotCopy(std::string string) : s(std::move(string)) {}
