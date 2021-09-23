@@ -3,6 +3,7 @@
 #include <list>
 #include <string>
 #include "Iterators.hpp"
+#include "MustNotCopy.hpp"
 
 TEST(Iterators, zip_elements) {
     using namespace iterators;
@@ -76,5 +77,16 @@ TEST(Iterators, enumerate_elements) {
         EXPECT_EQ(string, *sIt);
         EXPECT_EQ(index, i++);
         ++sIt;
+    }
+}
+
+TEST(Iterators, no_copy) {
+    using namespace iterators;
+    std::vector<MustNotCopy> items;
+    items.emplace_back("a");
+    items.emplace_back("b");
+    items.emplace_back("c");
+    for (auto [index, item] : enumerate(items)) {
+        item.s = "";
     }
 }
