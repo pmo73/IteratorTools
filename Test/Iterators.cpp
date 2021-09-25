@@ -90,3 +90,15 @@ TEST(Iterators, no_copy) {
         item.s = "";
     }
 }
+
+TEST(Iterators, enumerate_mutuate) {
+    using namespace iterators;
+    std::list<std::string> strings{"a", "b", "c"};
+    for (auto [index, string] : enumerate(strings)) {
+        string += std::to_string(index);
+        index += 2; // should have no effect
+    }
+
+    std::list<std::string> stringsResults{"a0", "b1", "c2"};
+    EXPECT_TRUE(std::equal(strings.begin(), strings.end(), stringsResults.begin()));
+}
