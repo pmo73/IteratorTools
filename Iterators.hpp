@@ -36,13 +36,11 @@ namespace iterators {
             };
 
             explicit ZipIterator(std::tuple<Iterable &...> &containers) :
-                    iterators(std::apply([](auto &&...c) { return std::tuple(std::begin(c)...); }, containers)),
-                    ends(std::apply([](auto &&...c) { return std::tuple(std::end(c)...); }, containers)) {
+                    iterators(std::apply([](auto &&...c) { return std::tuple(std::begin(c)...); }, containers)) {
             }
 
             ZipIterator(std::tuple<Iterable &...> &containers, Construct) :
-                    iterators(std::apply([](auto &&...c) { return std::tuple(std::end(c)...); }, containers)),
-                    ends(iterators) {
+                    iterators(std::apply([](auto &&...c) { return std::tuple(std::end(c)...); }, containers)) {
             }
 
             ZipIterator &operator++() {
@@ -69,21 +67,19 @@ namespace iterators {
 
         private:
             template<std::size_t N>
-            [[nodiscard]] constexpr bool equal(const IteratorTuple &other, bool oneNotEqual = false) const {
-                if constexpr(N == std::tuple_size_v<IteratorTuple>) {
-                    return !oneNotEqual;
+            [[nodiscard]] constexpr bool equal(const IteratorTuple &other) const {
+                if constexpr (N == std::tuple_size_v<IteratorTuple>) {
+                    return false;
                 } else {
-                    bool itEqual = std::get<N>(iterators) == std::get<N>(other);
-                    if (itEqual && std::get<N>(iterators) == std::get<N>(ends)) {
+                    if (std::get<N>(iterators) == std::get<N>(other)) {
                         return true;
+                    } else {
+                        return equal<N + 1>(other);
                     }
-
-                    return equal<N + 1>(other, !itEqual || oneNotEqual);
                 }
             }
 
             IteratorTuple iterators;
-            IteratorTuple ends;
         };
 
         /**
