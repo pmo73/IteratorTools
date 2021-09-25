@@ -49,7 +49,7 @@ namespace iterators {
             }
 
             bool operator==(const ZipIterator &other) const {
-                return equal<0>(other.iterators);
+                return equal(other.iterators);
             }
 
             bool operator!=(const ZipIterator &other) const {
@@ -66,7 +66,7 @@ namespace iterators {
             }
 
         private:
-            template<std::size_t N>
+            template<std::size_t N = 0>
             [[nodiscard]] constexpr bool equal(const IteratorTuple &other) const {
                 if constexpr (N == std::tuple_size_v<IteratorTuple>) {
                     return false;
