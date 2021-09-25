@@ -146,17 +146,23 @@ namespace iterators {
         };
 
         struct CounterContainer {
-            [[nodiscard]] static constexpr CounterIterator<std::size_t> begin() {
-                return CounterIterator<std::size_t>(0, std::numeric_limits<std::size_t>::max());
+            explicit CounterContainer(std::size_t start) : start(start) {}
+
+            [[nodiscard]] CounterIterator<std::size_t> begin() const {
+                return CounterIterator<std::size_t>(start, std::numeric_limits<std::size_t>::max());
             }
 
             [[nodiscard]] static constexpr CounterIterator<std::size_t> end() {
                 return CounterIterator<std::size_t>(std::numeric_limits<std::size_t>::max(),
                                                     std::numeric_limits<std::size_t>::max());
             }
+
+        private:
+            std::size_t start;
         };
 
         struct enumerate_storage {
+            explicit enumerate_storage(std::size_t start) : counter(start) {}
         protected:
             CounterContainer counter;
         };
@@ -169,8 +175,8 @@ namespace iterators {
      */
     template<typename Container, bool Readonly = false>
     struct enumerate : public impl::enumerate_storage, zip<Readonly, impl::CounterContainer, Container> {
-        explicit enumerate(Container &c) : impl::enumerate_storage(),
-                                           zip<Readonly, impl::CounterContainer, Container>(counter, c) {}
+        explicit enumerate(Container &c, std::size_t start = 0) :
+                impl::enumerate_storage(start), zip<Readonly, impl::CounterContainer, Container>(counter, c) {}
     };
 
     /**
@@ -179,7 +185,7 @@ namespace iterators {
      */
     template<typename Container>
     struct const_enumerate : public enumerate<Container, true> {
-        explicit const_enumerate(Container &c) : enumerate<Container, true>(c) {}
+        explicit const_enumerate(Container &c, std::size_t start = 0) : enumerate<Container, true>(c, start) {}
     };
 }
 
