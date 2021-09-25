@@ -6,7 +6,6 @@
 #define ITERATORTOOLS_ITERATORS_HPP
 
 #include <tuple>
-#include <iostream>
 
 namespace iterators {
     /**
@@ -22,13 +21,7 @@ namespace iterators {
          * Ctor
          * @param containers Arbitrary number of iterable containers
          */
-        explicit zip(Iterable &...containers) : containers(containers...) {
-            std::cout << "zip ctor" << std::endl;
-        }
-
-        ~zip() {
-            std::cout << "zip dtor" << std::endl;
-        };
+        explicit zip(Iterable &...containers) : containers(containers...) {}
 
         class ZipIterator {
             using IteratorTuple = std::tuple<decltype(std::begin(
@@ -94,7 +87,6 @@ namespace iterators {
          * @return
          */
         ZipIterator begin() {
-            std::cout << "begin" << std::endl;
             return ZipIterator(containers);
         }
 
@@ -103,7 +95,6 @@ namespace iterators {
          * @return
          */
         ZipIterator end() {
-            std::cout << "end" << std::endl;
             return ZipIterator(containers, ZipIterator::Construct::End);
         }
 
@@ -154,14 +145,6 @@ namespace iterators {
         };
 
         struct CounterContainer {
-            CounterContainer() {
-                std::cout << "counter ctor" << std::endl;
-            }
-
-            ~CounterContainer() {
-                std::cout << "counter dtor" << std::endl;
-            }
-
             [[nodiscard]] static constexpr CounterIterator<std::size_t> begin() {
                 return CounterIterator<std::size_t>(0, std::numeric_limits<std::size_t>::max());
             }
