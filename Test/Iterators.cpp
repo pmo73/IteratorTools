@@ -80,6 +80,18 @@ TEST(Iterators, enumerate_elements) {
     }
 }
 
+TEST(Iterators, enumerate_offset) {
+    using namespace iterators;
+    std::list<std::string> strings{"a", "b", "c"};
+    std::size_t i = 4;
+    auto sIt = strings.begin();
+    for (auto [index, string] : const_enumerate(strings, i)) {
+        EXPECT_EQ(string, *sIt);
+        EXPECT_EQ(index, i++);
+        ++sIt;
+    }
+}
+
 TEST(Iterators, no_copy) {
     using namespace iterators;
     std::vector<MustNotCopy> items;
