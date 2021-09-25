@@ -6,6 +6,7 @@
 #define ITERATORTOOLS_ITERATORS_HPP
 
 #include <tuple>
+#include <iostream>
 
 namespace iterators {
     /**
@@ -21,7 +22,13 @@ namespace iterators {
          * Ctor
          * @param containers Arbitrary number of iterable containers
          */
-        explicit zip(Iterable &...containers) : containers(containers...) {}
+        explicit zip(Iterable &...containers) : containers(containers...) {
+            std::cout << "zip ctor" << std::endl;
+        }
+
+        ~zip() {
+            std::cout << "zip dtor" << std::endl;
+        };
 
         class ZipIterator {
             using IteratorTuple = std::tuple<decltype(std::begin(
@@ -87,6 +94,7 @@ namespace iterators {
          * @return
          */
         ZipIterator begin() {
+            std::cout << "begin" << std::endl;
             return ZipIterator(containers);
         }
 
@@ -95,6 +103,7 @@ namespace iterators {
          * @return
          */
         ZipIterator end() {
+            std::cout << "end" << std::endl;
             return ZipIterator(containers, ZipIterator::Construct::End);
         }
 
@@ -145,6 +154,14 @@ namespace iterators {
         };
 
         struct CounterContainer {
+            CounterContainer() {
+                std::cout << "counter ctor" << std::endl;
+            }
+
+            ~CounterContainer() {
+                std::cout << "counter dtor" << std::endl;
+            }
+
             [[nodiscard]] static constexpr CounterIterator<std::size_t> begin() {
                 return CounterIterator<std::size_t>(0, std::numeric_limits<std::size_t>::max());
             }
@@ -154,6 +171,11 @@ namespace iterators {
                                                     std::numeric_limits<std::size_t>::max());
             }
         };
+
+        struct enumerate_storage {
+        protected:
+            CounterContainer counter;
+        };
     }
 
     /**
@@ -162,9 +184,9 @@ namespace iterators {
      * @tparam Readonly Whether the elements in the container can be manipulated
      */
     template<typename Container, bool Readonly = false>
-    struct enumerate : public zip<Readonly, impl::CounterContainer, Container> {
-        explicit enumerate(Container &c, impl::CounterContainer ctr = impl::CounterContainer{}) :
-            zip<Readonly, impl::CounterContainer, Container>(ctr, c) {}
+    struct enumerate : public impl::enumerate_storage, zip<Readonly, impl::CounterContainer, Container> {
+        explicit enumerate(Container &c) : impl::enumerate_storage(),
+                                           zip<Readonly, impl::CounterContainer, Container>(counter, c) {}
     };
 
     /**
