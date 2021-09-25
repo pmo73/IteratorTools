@@ -44,7 +44,7 @@ namespace iterators {
             }
 
             ZipIterator &operator++() {
-                std::apply([] (auto &&...it) {(++it, ...);}, iterators);
+                std::apply([](auto &&...it) { (++it, ...); }, iterators);
                 return *this;
             }
 
@@ -58,10 +58,10 @@ namespace iterators {
 
             auto operator*() {
                 if constexpr(Readonly) {
-                    return std::apply([] (auto &&...it) { return cValueTuple(*it...); }, iterators);
+                    return std::apply([](auto &&...it) { return cValueTuple(*it...); }, iterators);
 
                 } else {
-                    return std::apply([] (auto &&...it) { return ValueTuple(*it...); }, iterators);
+                    return std::apply([](auto &&...it) { return ValueTuple(*it...); }, iterators);
                 }
             }
 
@@ -114,9 +114,10 @@ namespace iterators {
     namespace impl {
         template<typename T>
         struct CounterIterator {
-            static_assert(std::is_integral_v<T> && ! std::is_floating_point_v<T>);
+            static_assert(std::is_integral_v<T> && !std::is_floating_point_v<T>);
+
             explicit constexpr CounterIterator(T begin, T end, T increment = T(1)) :
-                counter(begin), max(end), increment(increment) {}
+                    counter(begin), max(end), increment(increment) {}
 
             CounterIterator &operator++() {
                 if (counter < max) {
