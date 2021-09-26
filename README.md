@@ -1,0 +1,82 @@
+# Python-like Zip and Enumerate Iterators
+Implementation of Python-like zip- and enumerate-iterators which can be used in range-based
+for loops along with structured bindings to iterate over multiple containers at the same
+time.
+
+## Properties
+The `zip`-class is a container-wrapper for arbitrary iterable containers. It provides the
+member functions `begin()` and `end()` enabling it to be used in range-based for loops to
+iterate over multiple containers at the same time. The `enuerate`-function is a special
+case of `zip` and uses a "counting container" (similar to `std::ranges::iota`) to provide
+in index. Additionally, const-versions exist which do not allow the manipulation of the
+container elements.
+
+## Code Examples
+The syntax is mostly similar to Python:
+```c++
+#include <vector>
+#include <list>
+#include "Iterators.hpp"
+
+using namespace iterators;
+std::list<std::string> strings{"a", "b", "c"};
+std::vector<int> numbers{1, 2, 3};
+for (auto [string, number] : zip(strings, numbers)) {
+    // 'string' and 'number' are references to the container element
+    string += std::to_string(number); 
+}
+
+// now 'strings' contains {"a1", "b2", "c3"}
+```
+The for loop uses so called `ZipIterator`s which point to tuples which in turn contain
+references to the container elements. Therefore, no copying occurs and manipulation of the
+container elements is possible. Observe that the structured binding captures by value
+(since the values are themselves references).
+
+If you want to prohibit manipulation, you can use `const_zip`
+```c++
+using namespace iterators;
+std::list<std::string> strings{"a", "b", "c"};
+std::vector<int> numbers{1, 2, 3};
+for (auto [string, number] : const_zip(strings, numbers)) {
+    // string += std::to_string(number);  error, string is readonly!
+    std::cout << string << " " << number << std::endl;
+}
+```
+
+As in Python, the shortest range decides the overall range:
+```c++
+using namespace iterators;
+std::list<std::string> strings{"a", "b", "c"};
+std::vector<int> numbers{1, 2, 3, 4, 5, 6};
+for (auto [string, number] : zip(strings, numbers)) {
+    std::cout << string << " " << number << " | "
+}
+// prints a 1 | b 2 | c 3 |
+```
+
+The `enumerate`-function works similarly.
+```c++
+using namespace iterators;
+std::list<std::string> strings{"a", "b", "c"};
+for (auto [index, string] : enumerate(strings)) {
+    string += std::to_string(index); 
+}
+// now 'strings' contains {"a0", "b1", "c2"}
+```
+Also, an optional offset can be specified:
+```c++
+for (auto [index, string] : enumerate(strings, 4)) { // index starts from 4
+    ...
+}
+```
+And as with `zip`, a const version (`const_enumerate`) exists.
+
+In case temporary containers are used, `zip` and `enumerate` will take ownership of the
+to guarantee well-defined memory access.
+```c++
+for (auto [index, number] : enumerate(std::array{53, 21, 17})) {
+    // enumerate takes ownership of the array. The elements
+    // can safely be accessed and manipulated
+}
+```
