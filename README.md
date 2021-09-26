@@ -73,7 +73,7 @@ for (auto [index, string] : enumerate(strings, 4)) { // index starts from 4
 And as with `zip`, a const version (`const_enumerate`) exists.
 
 In case temporary containers are used, `zip` and `enumerate` will take ownership of the
-to guarantee well-defined memory access.
+containers to guarantee well-defined memory access.
 ```c++
 for (auto [index, number] : enumerate(std::array{53, 21, 17})) {
     // enumerate takes ownership of the array. The elements
