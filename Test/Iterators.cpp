@@ -144,6 +144,29 @@ TEST(Iterators, enumerate_constness) {
     EXPECT_TRUE(std::is_const_v<std::remove_reference_t<decltype(std::get<1>(*const_enumerate(strings).begin()))>>);
 }
 
+TEST(Iterators, enumerate_elements_no_copy) {
+    using namespace iterators;
+    std::vector<MustNotCopy> items;
+    items.emplace_back("a");
+    items.emplace_back("b");
+    items.emplace_back("c");
+    for (auto [index, item] : enumerate(items)) {
+        item.s += std::to_string(index);
+    }
+
+    for (auto [index, item] : enumerate(std::move(items))) {
+        item.s += std::to_string(index);
+    }
+}
+
+TEST(Iterators, enumerate_container_no_copy) {
+    using namespace iterators;
+    std::list<std::string> strings{"a", "b", "c"};
+    for (auto [index, string] : enumerate(strings)) {
+        string += std::to_string(index);
+    }
+}
+
 TEST(Iterators, temporary_container) {
     using namespace iterators;
     std::array expected_values{4, 5, 6};
