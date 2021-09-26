@@ -1,5 +1,5 @@
 # Python-like Zip and Enumerate Iterators
-Implementation of Python-like zip- and enumerate-iterators which can be used in range-based
+C++-implementation of Python-like zip- and enumerate-iterators which can be used in range-based
 for loops along with structured bindings to iterate over multiple containers at the same
 time.
 
