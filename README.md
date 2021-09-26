@@ -8,7 +8,7 @@ The `zip`-class is a container-wrapper for arbitrary iterable containers. It pro
 member functions `begin()` and `end()` enabling it to be used in range-based for loops to
 iterate over multiple containers at the same time. The `enuerate`-function is a special
 case of `zip` and uses a "counting container" (similar to `std::ranges::iota`) to provide
-in index. Additionally, const-versions exist which do not allow the manipulation of the
+an index. Additionally, const-versions exist which do not allow the manipulation of the
 container elements.
 
 ## Code Examples
