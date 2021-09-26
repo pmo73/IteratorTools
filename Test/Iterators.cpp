@@ -2,6 +2,7 @@
 #include <vector>
 #include <list>
 #include <string>
+#include <type_traits>
 #include "Iterators.hpp"
 #include "MustNotCopy.hpp"
 
@@ -68,7 +69,15 @@ TEST(Iterators, zip_mutuate) {
     EXPECT_TRUE(std::equal(strings.begin(), strings.end(), stringsResults.begin()));
 }
 
-TEST(Iterators, no_copy) {
+TEST(Iterators, zip_constness) {
+    using namespace iterators;
+    std::list<std::string> strings;
+    std::vector<int> numbers;
+    EXPECT_TRUE(std::is_const_v<std::remove_reference_t<decltype(std::get<0>(*const_zip(strings, numbers).begin()))>>);
+    EXPECT_TRUE(std::is_const_v<std::remove_reference_t<decltype(std::get<1>(*const_zip(strings, numbers).begin()))>>);
+}
+
+TEST(Iterators, elements_no_copy) {
     using namespace iterators;
     std::vector<MustNotCopy> items;
     items.emplace_back("a");
@@ -80,6 +89,16 @@ TEST(Iterators, no_copy) {
 
     for (auto [item] : zip(std::move(items))) {
         item.s = "";
+    }
+}
+
+TEST(Iterators, container_no_copy) {
+    using namespace iterators;
+    MustNotCopyContainer<std::string> strings{"a", "b", "c"};
+    MustNotCopyContainer<int> numbers{1, 2, 3};
+    for (auto [string, number] : zip(strings, numbers)) {
+        number *= 2;
+        string += std::to_string(number);
     }
 }
 
@@ -117,6 +136,12 @@ TEST(Iterators, enumerate_mutuate) {
 
     std::list<std::string> stringsResults{"a0", "b1", "c2"};
     EXPECT_TRUE(std::equal(strings.begin(), strings.end(), stringsResults.begin()));
+}
+
+TEST(Iterators, enumerate_constness) {
+    using namespace iterators;
+    std::list<std::string> strings;
+    EXPECT_TRUE(std::is_const_v<std::remove_reference_t<decltype(std::get<1>(*const_enumerate(strings).begin()))>>);
 }
 
 TEST(Iterators, temporary_container) {
