@@ -16,4 +16,3 @@ bool MustNotCopy::operator==(const MustNotCopy &other) const {
 bool MustNotCopy::operator!=(const MustNotCopy &other) const {
     return !(*this == other);
 }
-

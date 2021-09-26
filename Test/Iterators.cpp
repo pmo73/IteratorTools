@@ -5,36 +5,6 @@
 #include "Iterators.hpp"
 #include "MustNotCopy.hpp"
 
-struct Numbers {
-    Numbers() : numbers{1, 2, 3} {
-        std::cout << "numbers ctor" << std::endl;
-    }
-    Numbers(const Numbers &other) : numbers(other.numbers) {
-        std::cout << "container copied"<< std::endl;
-    }
-
-    Numbers(Numbers &&other) noexcept : numbers(std::move(other.numbers)) {
-        std::cout << "container moved" << std::endl;
-    }
-
-    ~Numbers() {
-        std::cout << "numbers dtor" << std::endl;
-    }
-    auto begin() {
-        return numbers.begin();
-    }
-
-    auto begin() const {
-        return numbers.begin();
-    }
-
-    auto end() const {
-        return numbers.end();
-    }
-
-    std::vector<int> numbers;
-};
-
 TEST(Iterators, zip_elements) {
     using namespace iterators;
     std::list<std::string> strings{"a", "b", "c"};
@@ -147,4 +117,20 @@ TEST(Iterators, enumerate_mutuate) {
 
     std::list<std::string> stringsResults{"a0", "b1", "c2"};
     EXPECT_TRUE(std::equal(strings.begin(), strings.end(), stringsResults.begin()));
+}
+
+TEST(Iterators, temporary_container) {
+    using namespace iterators;
+    std::array expected_values{4, 5, 6};
+    for (auto [expected, actual] : zip(expected_values, std::array{4, 5, 6})) {
+        EXPECT_EQ(expected, actual);
+    }
+}
+
+TEST(Iterators, temporary_no_copy) {
+    using namespace iterators;
+    std::array expected_values{1, 2, 3};
+    for (auto [expected, actual] : zip(expected_values, MustNotCopyContainer<int>({1, 2, 3}))) {
+        EXPECT_EQ(expected, actual);
+    }
 }
