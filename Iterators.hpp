@@ -5,41 +5,60 @@
 #ifndef ITERATORTOOLS_ITERATORS_HPP
 #define ITERATORTOOLS_ITERATORS_HPP
 
+#include <iostream>
 #include <tuple>
 
 namespace iterators {
+    template<bool Cond, typename T>
+    struct reference_if {
+        using type = T;
+    };
+
+    template<typename T>
+    struct reference_if<true, T> {
+        using type = std::add_lvalue_reference_t<T>;
+    };
+
+    template<bool Cond, typename T>
+    using reference_if_t = typename reference_if<Cond, T>::type;
+
     /**
-     * Class that can be used in range based loops to emulate the zip iterator from python.
+     * Class that can be used in range based loops to emulate the zip_ iterator from python.
      * As in python: if the passed containers have different lengths, the container with the least items decides
      * the overall range
      * @tparam Readonly Whether the elements in the containers can be manipulated
      * @tparam Iterable Container types that support iteration
      */
-    template<bool Readonly = false, typename ...Iterable>
-    struct zip {
+    template<typename ...Iterable>
+    struct zip_ {
+        using ContainerTuple = std::tuple<Iterable...>;
         /**
          * Ctor
          * @param containers Arbitrary number of iterable containers
          */
-        explicit zip(Iterable &...containers) : containers(containers...) {}
+        template<typename ...Container>
+        explicit zip_(Container &&...containers) : containers(std::forward<Container>(containers)...) {
+            std::cout << "zip ctor" << std::endl;
+        }
+
+        ~zip_() {
+            std::cout << "zip dtor" << std::endl;
+
+        }
 
         class ZipIterator {
-            using IteratorTuple = std::tuple<decltype(std::begin(
-                    std::declval<std::add_lvalue_reference_t<Iterable>>()))...>;
-            using ValueTuple = std::tuple<decltype(*std::begin(
-                    std::declval<std::add_lvalue_reference_t<Iterable>>()))...>;
-            using cValueTuple = std::tuple<decltype(*std::begin(
-                    std::declval<std::add_lvalue_reference_t<std::add_const_t<Iterable>>>()))...>;
+            using IteratorTuple = std::tuple<decltype(std::begin(std::declval<std::add_lvalue_reference_t<Iterable>>()))...>;
+            using ValueTuple = std::tuple<decltype(*std::begin(std::declval<std::add_lvalue_reference_t<Iterable>>()))...>;
         public:
             enum class Construct {
                 End
             };
 
-            explicit ZipIterator(std::tuple<Iterable &...> &containers) :
+            explicit ZipIterator(ContainerTuple &containers) :
                     iterators(std::apply([](auto &&...c) { return std::tuple(std::begin(c)...); }, containers)) {
             }
 
-            ZipIterator(std::tuple<Iterable &...> &containers, Construct) :
+            ZipIterator(ContainerTuple &containers, Construct) :
                     iterators(std::apply([](auto &&...c) { return std::tuple(std::end(c)...); }, containers)) {
             }
 
@@ -57,12 +76,7 @@ namespace iterators {
             }
 
             auto operator*() {
-                if constexpr(Readonly) {
-                    return std::apply([](auto &&...it) { return cValueTuple(*it...); }, iterators);
-
-                } else {
-                    return std::apply([](auto &&...it) { return ValueTuple(*it...); }, iterators);
-                }
+                return std::apply([](auto &&...it) { return ValueTuple(*it...); }, iterators);
             }
 
         private:
@@ -99,17 +113,20 @@ namespace iterators {
         }
 
     private:
-        std::tuple<Iterable &...> containers;
+        ContainerTuple containers;
     };
 
-    /**
-     * zip specialization that does not allow manipulation of the container elements
-     * @tparam Iterable Container types that support iteration
-     */
     template<typename ...Iterable>
-    struct const_zip : public zip<true, Iterable...> {
-        explicit const_zip(Iterable &...iterable) : zip<true, Iterable...>(iterable...) {}
-    };
+    auto zip(Iterable &&...iterable) {
+        return zip_<Iterable...>(std::forward<Iterable>(iterable)...);
+    }
+
+    template<typename ...Iterable>
+    auto const_zip(Iterable &&...iterable) {
+        return zip_<reference_if_t<std::is_lvalue_reference_v<Iterable>, std::add_const_t<std::remove_reference_t<Iterable>>>...>(
+               std::forward<Iterable>(iterable)...);
+    }
+
 
     namespace impl {
         template<typename T>
@@ -168,25 +185,28 @@ namespace iterators {
         };
     }
 
+
     /**
      * Class that can be used in range based loops to emulate the enumerate iterator from python.
      * @tparam Container Container type that supports iteration
      * @tparam Readonly Whether the elements in the container can be manipulated
      */
+     /*
     template<typename Container, bool Readonly = false>
-    struct enumerate : public impl::enumerate_storage, zip<Readonly, impl::CounterContainer, Container> {
+    struct enumerate : public impl::enumerate_storage, zip_<Readonly, impl::CounterContainer, Container> {
         explicit enumerate(Container &c, std::size_t start = 0) :
-                impl::enumerate_storage(start), zip<Readonly, impl::CounterContainer, Container>(counter, c) {}
-    };
+                impl::enumerate_storage(start), zip_<Readonly, impl::CounterContainer, Container>(counter, c) {}
+    };*/
 
     /**
      * enumerate specialization that does not allow manipulation of the container elements
      * @tparam Container Container type that supports iteration
      */
+     /*
     template<typename Container>
     struct const_enumerate : public enumerate<Container, true> {
         explicit const_enumerate(Container &c, std::size_t start = 0) : enumerate<Container, true>(c, start) {}
-    };
+    };*/
 }
 
 #endif //ITERATORTOOLS_ITERATORS_HPP

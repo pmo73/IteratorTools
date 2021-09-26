@@ -5,9 +5,40 @@
 #include "Iterators.hpp"
 #include "MustNotCopy.hpp"
 
+struct Numbers {
+    Numbers() : numbers{1, 2, 3} {
+        std::cout << "numbers ctor" << std::endl;
+    }
+    Numbers(const Numbers &other) : numbers(other.numbers) {
+        std::cout << "container copied"<< std::endl;
+    }
+
+    Numbers(Numbers &&other) noexcept : numbers(std::move(other.numbers)) {
+        std::cout << "container moved" << std::endl;
+    }
+
+    ~Numbers() {
+        std::cout << "numbers dtor" << std::endl;
+    }
+    auto begin()  {
+        return numbers.begin();
+    }
+
+    auto end() {
+        return numbers.end();
+    }
+
+    std::vector<int> numbers;
+};
+
 TEST(Iterators, zip_elements) {
     using namespace iterators;
-    std::list<std::string> strings{"a", "b", "c"};
+    const std::list<std::string> strings{"a", "b", "c"};
+    for (auto [s, n] : zip(strings, Numbers{})) {
+        n *= 2;
+        std::cout << s << n << std::endl;
+    }
+    /*std::list<std::string> strings{"a", "b", "c"};
     std::vector<int> numbers{1, 2, 3};
     auto sIt = strings.begin();
     auto nIt = numbers.begin();
@@ -18,9 +49,8 @@ TEST(Iterators, zip_elements) {
     }
 
     EXPECT_EQ(sIt, strings.end());
-    EXPECT_EQ(nIt, numbers.end());
+    EXPECT_EQ(nIt, numbers.end());*/
 }
-
 TEST(Iterators, zip_c_arrays) {
     using namespace iterators;
     int numbers[] = {1, 2, 3};
@@ -68,6 +98,18 @@ TEST(Iterators, zip_mutuate) {
     EXPECT_TRUE(std::equal(strings.begin(), strings.end(), stringsResults.begin()));
 }
 
+TEST(Iterators, no_copy) {
+    using namespace iterators;
+    std::vector<MustNotCopy> items;
+    items.emplace_back("a");
+    items.emplace_back("b");
+    items.emplace_back("c");
+    for (auto [item] : zip(items)) {
+        item.s = "";
+    }
+}
+
+/*
 TEST(Iterators, enumerate_elements) {
     using namespace iterators;
     std::list<std::string> strings{"a", "b", "c"};
@@ -92,17 +134,6 @@ TEST(Iterators, enumerate_offset) {
     }
 }
 
-TEST(Iterators, no_copy) {
-    using namespace iterators;
-    std::vector<MustNotCopy> items;
-    items.emplace_back("a");
-    items.emplace_back("b");
-    items.emplace_back("c");
-    for (auto [index, item] : enumerate(items)) {
-        item.s = "";
-    }
-}
-
 TEST(Iterators, enumerate_mutuate) {
     using namespace iterators;
     std::list<std::string> strings{"a", "b", "c"};
@@ -114,3 +145,4 @@ TEST(Iterators, enumerate_mutuate) {
     std::list<std::string> stringsResults{"a0", "b1", "c2"};
     EXPECT_TRUE(std::equal(strings.begin(), strings.end(), stringsResults.begin()));
 }
+*/
