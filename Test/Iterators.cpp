@@ -140,7 +140,9 @@ TEST(Iterators, temporary_lifetime) {
     std::array expected_values{1, 2, 3};
     bool allowToDie = false;
     for (auto [expected, actual] : zip(expected_values, LifeTimeChecker<int>({1, 2, 3}, allowToDie))) {
-        allowToDie = true;
         EXPECT_EQ(expected, actual);
+        if (actual == 3) { // after the last iteration, the temporary container may be destroyed
+            allowToDie = true;
+        }
     }
 }
