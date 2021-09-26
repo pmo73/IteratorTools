@@ -9,122 +9,125 @@
 #include <tuple>
 
 namespace iterators {
-    template<bool Cond, typename T>
-    struct reference_if {
-        using type = T;
-    };
 
-    template<typename T>
-    struct reference_if<true, T> {
-        using type = std::add_lvalue_reference_t<T>;
-    };
+    namespace impl {
+        template<bool Cond, typename T>
+        struct reference_if {
+            using type = T;
+        };
 
-    template<bool Cond, typename T>
-    using reference_if_t = typename reference_if<Cond, T>::type;
+        template<typename T>
+        struct reference_if<true, T> {
+            using type = std::add_lvalue_reference_t<T>;
+        };
 
-    /**
-     * Class that can be used in range based loops to emulate the zip_ iterator from python.
-     * As in python: if the passed containers have different lengths, the container with the least items decides
-     * the overall range
-     * @tparam Readonly Whether the elements in the containers can be manipulated
-     * @tparam Iterable Container types that support iteration
-     */
-    template<typename ...Iterable>
-    struct zip_ {
-        using ContainerTuple = std::tuple<Iterable...>;
+        template<bool Cond, typename T>
+        using reference_if_t = typename reference_if<Cond, T>::type;
+
         /**
-         * Ctor
-         * @param containers Arbitrary number of iterable containers
+         * Class that can be used in range based loops to emulate the zip_ iterator from python.
+         * As in python: if the passed containers have different lengths, the container with the least items decides
+         * the overall range
+         * @tparam Readonly Whether the elements in the containers can be manipulated
+         * @tparam Iterable Container types that support iteration
          */
-        template<typename ...Container>
-        explicit zip_(Container &&...containers) : containers(std::forward<Container>(containers)...) {
-            std::cout << "zip ctor" << std::endl;
-        }
+        template<typename ...Iterable>
+        struct zip_ {
+            using ContainerTuple = std::tuple<Iterable...>;
 
-        ~zip_() {
-            std::cout << "zip dtor" << std::endl;
+            template<typename ...Container>
+            explicit zip_(Container &&...containers) : containers(std::forward<Container>(containers)...) {
+                std::cout << "zip ctor" << std::endl;
+            }
 
-        }
+            ~zip_() {
+                std::cout << "zip dtor" << std::endl;
 
-        class ZipIterator {
-            using IteratorTuple = std::tuple<decltype(std::begin(std::declval<std::add_lvalue_reference_t<Iterable>>()))...>;
-            using ValueTuple = std::tuple<decltype(*std::begin(std::declval<std::add_lvalue_reference_t<Iterable>>()))...>;
-        public:
-            enum class Construct {
-                End
+            }
+
+            class ZipIterator {
+                using IteratorTuple = std::tuple<decltype(std::begin(
+                        std::declval<std::add_lvalue_reference_t<Iterable>>()))...>;
+                using ValueTuple = std::tuple<decltype(*std::begin(
+                        std::declval<std::add_lvalue_reference_t<Iterable>>()))...>;
+            public:
+                enum class Construct {
+                    End
+                };
+
+                explicit ZipIterator(ContainerTuple &containers) :
+                        iterators(std::apply([](auto &&...c) { return std::tuple(std::begin(c)...); }, containers)) {
+                }
+
+                ZipIterator(ContainerTuple &containers, Construct) :
+                        iterators(std::apply([](auto &&...c) { return std::tuple(std::end(c)...); }, containers)) {
+                }
+
+                ZipIterator &operator++() {
+                    std::apply([](auto &&...it) { (++it, ...); }, iterators);
+                    return *this;
+                }
+
+                bool operator==(const ZipIterator &other) const {
+                    return equal(other.iterators);
+                }
+
+                bool operator!=(const ZipIterator &other) const {
+                    return !(*this == other);
+                }
+
+                auto operator*() {
+                    return std::apply([](auto &&...it) { return ValueTuple(*it...); }, iterators);
+                }
+
+            private:
+                template<std::size_t N = 0>
+                [[nodiscard]] constexpr bool equal(const IteratorTuple &other) const {
+                    if constexpr (N == std::tuple_size_v<IteratorTuple>) {
+                        return false;
+                    } else {
+                        if (std::get<N>(iterators) == std::get<N>(other)) {
+                            return true;
+                        } else {
+                            return equal<N + 1>(other);
+                        }
+                    }
+                }
+
+                IteratorTuple iterators;
             };
 
-            explicit ZipIterator(ContainerTuple &containers) :
-                    iterators(std::apply([](auto &&...c) { return std::tuple(std::begin(c)...); }, containers)) {
+            /**
+             * Returns a ZipIterator to the beginning of the sequence
+             * @return
+             */
+            ZipIterator begin() {
+                return ZipIterator(containers);
             }
 
-            ZipIterator(ContainerTuple &containers, Construct) :
-                    iterators(std::apply([](auto &&...c) { return std::tuple(std::end(c)...); }, containers)) {
-            }
-
-            ZipIterator &operator++() {
-                std::apply([](auto &&...it) { (++it, ...); }, iterators);
-                return *this;
-            }
-
-            bool operator==(const ZipIterator &other) const {
-                return equal(other.iterators);
-            }
-
-            bool operator!=(const ZipIterator &other) const {
-                return !(*this == other);
-            }
-
-            auto operator*() {
-                return std::apply([](auto &&...it) { return ValueTuple(*it...); }, iterators);
+            /**
+             * Returns a ZipIterator to the past-the-end element of the sequence. Do not dereference!
+             * @return
+             */
+            ZipIterator end() {
+                return ZipIterator(containers, ZipIterator::Construct::End);
             }
 
         private:
-            template<std::size_t N = 0>
-            [[nodiscard]] constexpr bool equal(const IteratorTuple &other) const {
-                if constexpr (N == std::tuple_size_v<IteratorTuple>) {
-                    return false;
-                } else {
-                    if (std::get<N>(iterators) == std::get<N>(other)) {
-                        return true;
-                    } else {
-                        return equal<N + 1>(other);
-                    }
-                }
-            }
-
-            IteratorTuple iterators;
+            ContainerTuple containers;
         };
 
-        /**
-         * Returns a ZipIterator to the beginning of the sequence
-         * @return
-         */
-        ZipIterator begin() {
-            return ZipIterator(containers);
-        }
-
-        /**
-         * Returns a ZipIterator to the past-the-end element of the sequence. Do not dereference!
-         * @return
-         */
-        ZipIterator end() {
-            return ZipIterator(containers, ZipIterator::Construct::End);
-        }
-
-    private:
-        ContainerTuple containers;
-    };
+    }
 
     template<typename ...Iterable>
     auto zip(Iterable &&...iterable) {
-        return zip_<Iterable...>(std::forward<Iterable>(iterable)...);
+        return impl::zip_<Iterable...>(std::forward<Iterable>(iterable)...);
     }
 
     template<typename ...Iterable>
     auto const_zip(Iterable &&...iterable) {
-        return zip_<reference_if_t<std::is_lvalue_reference_v<Iterable>, std::add_const_t<std::remove_reference_t<Iterable>>>...>(
-               std::forward<Iterable>(iterable)...);
+        return impl::zip_<impl::reference_if_t<std::is_lvalue_reference_v<Iterable>,
+                std::add_const_t<std::remove_reference_t<Iterable>>>...>(std::forward<Iterable>(iterable)...);
     }
 
 
@@ -177,14 +180,17 @@ namespace iterators {
         private:
             std::size_t start;
         };
-
-        struct enumerate_storage {
-            explicit enumerate_storage(std::size_t start) : counter(start) {}
-        protected:
-            CounterContainer counter;
-        };
     }
 
+    template<typename Container>
+    auto enumerate(Container &&container, std::size_t start = 0) {
+        return zip(impl::CounterContainer(start), std::forward<Container>(container));
+    }
+
+    template<typename Container>
+    auto const_enumerate(Container &&container, std::size_t start = 0) {
+        return const_zip(impl::CounterContainer(start), std::forward<Container>(container));
+    }
 
     /**
      * Class that can be used in range based loops to emulate the enumerate iterator from python.

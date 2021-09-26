@@ -20,11 +20,15 @@ struct Numbers {
     ~Numbers() {
         std::cout << "numbers dtor" << std::endl;
     }
-    auto begin()  {
+    auto begin() {
         return numbers.begin();
     }
 
-    auto end() {
+    auto begin() const {
+        return numbers.begin();
+    }
+
+    auto end() const {
         return numbers.end();
     }
 
@@ -33,12 +37,7 @@ struct Numbers {
 
 TEST(Iterators, zip_elements) {
     using namespace iterators;
-    const std::list<std::string> strings{"a", "b", "c"};
-    for (auto [s, n] : zip(strings, Numbers{})) {
-        n *= 2;
-        std::cout << s << n << std::endl;
-    }
-    /*std::list<std::string> strings{"a", "b", "c"};
+    std::list<std::string> strings{"a", "b", "c"};
     std::vector<int> numbers{1, 2, 3};
     auto sIt = strings.begin();
     auto nIt = numbers.begin();
@@ -49,8 +48,9 @@ TEST(Iterators, zip_elements) {
     }
 
     EXPECT_EQ(sIt, strings.end());
-    EXPECT_EQ(nIt, numbers.end());*/
+    EXPECT_EQ(nIt, numbers.end());
 }
+
 TEST(Iterators, zip_c_arrays) {
     using namespace iterators;
     int numbers[] = {1, 2, 3};
@@ -109,7 +109,6 @@ TEST(Iterators, no_copy) {
     }
 }
 
-/*
 TEST(Iterators, enumerate_elements) {
     using namespace iterators;
     std::list<std::string> strings{"a", "b", "c"};
@@ -145,4 +144,3 @@ TEST(Iterators, enumerate_mutuate) {
     std::list<std::string> stringsResults{"a0", "b1", "c2"};
     EXPECT_TRUE(std::equal(strings.begin(), strings.end(), stringsResults.begin()));
 }
-*/
