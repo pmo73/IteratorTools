@@ -1,6 +1,9 @@
-//
-// Created by tim on 10.09.21.
-//
+/**
+ * @author tim Luchterhand
+ * @date 10.09.21
+ * @brief This file contains the definitions of Python-like zip- and enumerate-functions. They can be used in range
+ * based for-loops to loop over multiple ranges at the same time, or to index a range while looping respectively.
+ */
 
 #ifndef ITERATORTOOLS_ITERATORS_HPP
 #define ITERATORTOOLS_ITERATORS_HPP
