@@ -57,8 +57,47 @@ struct MustNotCopyContainer {
         return values.end();
     }
 
+private:
     std::vector<T> values;
 };
 
+
+template<typename T>
+struct LifeTimeChecker {
+    explicit LifeTimeChecker(std::initializer_list<T> init, const bool &deathFlag) : values(init.begin(), init.end()),
+                                                                                     allowedToDie(deathFlag) {};
+
+    LifeTimeChecker(const LifeTimeChecker &other) = default;
+
+    LifeTimeChecker(LifeTimeChecker &&other) noexcept: values(std::move(other.values)),
+                                                       allowedToDie(other.allowedToDie) {
+        other.moved = true;
+    }
+
+    ~LifeTimeChecker() {
+        EXPECT_TRUE(allowedToDie || moved) << "DTor called although not allowed yet";
+    }
+
+    auto begin() {
+        return values.begin();
+    }
+
+    auto begin() const {
+        return values.begin();
+    }
+
+    auto end() {
+        return values.end();
+    }
+
+    auto end() const {
+        return values.end();
+    }
+
+private:
+    std::vector<T> values;
+    const bool &allowedToDie;
+    bool moved = false;
+};
 
 #endif //BIDIRECTIONALMAP_MUSTNOTCOPY_HPP

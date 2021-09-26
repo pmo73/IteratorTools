@@ -134,3 +134,13 @@ TEST(Iterators, temporary_no_copy) {
         EXPECT_EQ(expected, actual);
     }
 }
+
+TEST(Iterators, temporary_lifetime) {
+    using namespace iterators;
+    std::array expected_values{1, 2, 3};
+    bool allowToDie = false;
+    for (auto [expected, actual] : zip(expected_values, LifeTimeChecker<int>({1, 2, 3}, allowToDie))) {
+        allowToDie = true;
+        EXPECT_EQ(expected, actual);
+    }
+}
