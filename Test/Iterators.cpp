@@ -107,6 +107,10 @@ TEST(Iterators, no_copy) {
     for (auto [item] : zip(items)) {
         item.s = "";
     }
+
+    for (auto [item] : zip(std::move(items))) {
+        item.s = "";
+    }
 }
 
 TEST(Iterators, enumerate_elements) {
