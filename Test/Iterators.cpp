@@ -73,8 +73,11 @@ TEST(Iterators, zip_constness) {
     using namespace iterators;
     std::list<std::string> strings;
     std::vector<int> numbers;
+    const auto &constStrings = strings;
     EXPECT_TRUE(std::is_const_v<std::remove_reference_t<decltype(std::get<0>(*const_zip(strings, numbers).begin()))>>);
     EXPECT_TRUE(std::is_const_v<std::remove_reference_t<decltype(std::get<1>(*const_zip(strings, numbers).begin()))>>);
+    EXPECT_TRUE(std::is_const_v<std::remove_reference_t<decltype(std::get<0>(*zip(constStrings, numbers).begin()))>>);
+    EXPECT_FALSE(std::is_const_v<std::remove_reference_t<decltype(std::get<1>(*zip(constStrings, numbers).begin()))>>);
 }
 
 TEST(Iterators, elements_no_copy) {
@@ -141,7 +144,9 @@ TEST(Iterators, enumerate_mutuate) {
 TEST(Iterators, enumerate_constness) {
     using namespace iterators;
     std::list<std::string> strings;
+    const auto &constStrings = strings;
     EXPECT_TRUE(std::is_const_v<std::remove_reference_t<decltype(std::get<1>(*const_enumerate(strings).begin()))>>);
+    EXPECT_TRUE(std::is_const_v<std::remove_reference_t<decltype(std::get<1>(*enumerate(constStrings).begin()))>>);
 }
 
 TEST(Iterators, enumerate_elements_no_copy) {
