@@ -199,3 +199,14 @@ TEST(Iterators, temporary_lifetime) {
         }
     }
 }
+
+TEST(Iterators, bool_vector) {
+    using namespace iterators;
+    std::vector<bool> booleans{true, true, false, false};
+    for (auto [_, boolean] : enumerate(booleans)) {
+        boolean = !boolean;
+    }
+
+    std::vector<bool> expected{false, false, true, true};
+    EXPECT_TRUE(std::equal(booleans.begin(), booleans.end(), expected.begin()));
+}
