@@ -9,6 +9,7 @@
 #define ITERATORTOOLS_ITERATORS_HPP
 
 #include <tuple>
+#include <limits>
 
 namespace iterators {
     namespace impl {
