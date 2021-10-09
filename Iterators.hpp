@@ -34,6 +34,8 @@ namespace iterators {
             explicit zip_(Container &&...containers) : containers(std::forward<Container>(containers)...) {}
 
             class ZipIterator {
+                template<typename Container>
+                using IteratorReference = std::add_lvalue_reference_t<decltype(std::begin(std::declval<std::add_lvalue_reference_t<Container>>()))>;
                 using IteratorTuple = std::tuple<decltype(std::begin(
                         std::declval<std::add_lvalue_reference_t<Iterable>>()))...>;
                 using ValueTuple = std::tuple<decltype(*std::begin(
@@ -49,26 +51,28 @@ namespace iterators {
                 ZipIterator(ContainerTuple &containers, Construct) :
                         iterators(std::apply([](auto &&...c) { return std::tuple(std::end(c)...); }, containers)) {}
 
-                ZipIterator &operator++() {
+                ZipIterator &operator++() noexcept((noexcept(++std::declval<IteratorReference<Iterable>>()) && ...)) {
                     std::apply([](auto &&...it) { (++it, ...); }, iterators);
                     return *this;
                 }
 
-                bool operator==(const ZipIterator &other) const {
+                bool operator==(const ZipIterator &other) const noexcept(noexcept(this->equal(other.iterators))) {
                     return equal(other.iterators);
                 }
 
-                bool operator!=(const ZipIterator &other) const {
+                bool operator!=(const ZipIterator &other) const noexcept(noexcept(*this == other)) {
                     return !(*this == other);
                 }
 
-                auto operator*() {
+                auto operator*() noexcept((noexcept(*std::declval<IteratorReference<Iterable>>()) && ...)) {
                     return std::apply([](auto &&...it) { return ValueTuple(*it...); }, iterators);
                 }
 
             private:
                 template<std::size_t N = 0>
-                [[nodiscard]] constexpr bool equal(const IteratorTuple &other) const {
+                [[nodiscard]] constexpr bool equal(const IteratorTuple &other) const noexcept((noexcept(
+                        std::declval<IteratorReference<Iterable>>() ==
+                        std::declval<IteratorReference<Iterable>>()) && ...)) {
                     if constexpr (N == std::tuple_size_v<IteratorTuple>) {
                         return false;
                     } else {
@@ -99,10 +103,10 @@ namespace iterators {
         struct CounterIterator {
             static_assert(std::is_integral_v<T> && !std::is_floating_point_v<T>);
 
-            explicit constexpr CounterIterator(T begin, T end, T increment = T(1)) :
+            explicit constexpr CounterIterator(T begin, T end, T increment = T(1)) noexcept:
                     counter(begin), max(end), increment(increment) {}
 
-            CounterIterator &operator++() {
+            CounterIterator &operator++() noexcept {
                 if (counter < max) {
                     counter += increment;
                 }
@@ -110,15 +114,15 @@ namespace iterators {
                 return *this;
             }
 
-            bool operator==(const CounterIterator &other) const {
+            bool operator==(const CounterIterator &other) const noexcept {
                 return counter == other.counter;
             }
 
-            bool operator!=(const CounterIterator &other) const {
+            bool operator!=(const CounterIterator &other) const noexcept {
                 return !(*this == other);
             }
 
-            constexpr T operator*() const {
+            constexpr T operator*() const noexcept {
                 return counter;
             }
 
@@ -129,13 +133,13 @@ namespace iterators {
         };
 
         struct CounterContainer {
-            explicit CounterContainer(std::size_t start) : start(start) {}
+            explicit constexpr CounterContainer(std::size_t start) noexcept : start(start) {}
 
-            [[nodiscard]] CounterIterator<std::size_t> begin() const {
+            [[nodiscard]] CounterIterator<std::size_t> begin() const noexcept {
                 return CounterIterator<std::size_t>(start, std::numeric_limits<std::size_t>::max());
             }
 
-            [[nodiscard]] static constexpr CounterIterator<std::size_t> end() {
+            [[nodiscard]] static constexpr CounterIterator<std::size_t> end() noexcept {
                 return CounterIterator<std::size_t>(std::numeric_limits<std::size_t>::max(),
                                                     std::numeric_limits<std::size_t>::max());
             }
