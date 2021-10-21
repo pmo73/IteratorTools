@@ -1,7 +1,7 @@
 # Python-like Zip and Enumerate Iterators
 C++-implementation of Python-like zip- and enumerate-iterators which can be used in range-based
 for loops along with structured bindings to iterate over multiple containers at the same
-time.
+time. Requires C++17.
 
 ## Properties
 The `zip`-class is a container-wrapper for arbitrary iterable containers. It provides the
