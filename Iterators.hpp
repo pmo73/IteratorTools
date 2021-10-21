@@ -190,8 +190,10 @@ namespace iterators {
     /**
      * Function that can be used in range based loops to emulate the enumerate iterator from python.
      * @tparam Container Container type that supports iteration
+     * @tparam T type of enumerate counter (default std::size_t)
      * @param container Arbitrary number of containers
      * @param start Optional index offset (default 0)
+     * @param increment Optional index increment (default 1)
      * @return zip-container class that provides begin and end members to be used in range based for-loops.
      */
     template<typename Container, typename T = std::size_t>
@@ -202,8 +204,10 @@ namespace iterators {
     /**
      * enumerate variant that does not allow manipulation of the container elements
      * @tparam Container Container type that supports iteration
+     * @tparam T type of enumerate counter (default std::size_t)
      * @param container Arbitrary number of containers
      * @param start Optional index offset (default 0)
+     * @param increment Optional index increment (default 1)
      * @return zip-container class that provides begin and end members to be used in range based for-loops.
      */
     template<typename Container, typename T = std::size_t>
