@@ -129,6 +129,32 @@ TEST(Iterators, enumerate_offset) {
     }
 }
 
+TEST(Iterators, enumerate_negative_offset) {
+    using namespace iterators;
+    std::list<std::string> strings{"a", "b", "c"};
+    int i = -3;
+    auto sIt = strings.begin();
+
+    for (auto [index, string] : const_enumerate(strings, i)) {
+        EXPECT_EQ(string, *sIt);
+        EXPECT_EQ(index, i++);
+        ++sIt;
+    }
+}
+
+TEST(Iterators, enumerate_increment) {
+    using namespace iterators;
+    std::list<std::string> strings{"a", "b", "c"};
+    int i = 4;
+    auto sIt = strings.begin();
+    for (auto [index, string] : const_enumerate(strings, 4, -2)) {
+        EXPECT_EQ(string, *sIt);
+        EXPECT_EQ(index, i);
+        i -= 2;
+        ++sIt;
+    }
+}
+
 TEST(Iterators, enumerate_mutuate) {
     using namespace iterators;
     std::list<std::string> strings{"a", "b", "c"};
