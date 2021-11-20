@@ -6,7 +6,7 @@
 #include "Iterators.hpp"
 #include "utils.hpp"
 
-TEST(Iterators, zip_elements) {
+TEST(ZipIterators, zip_elements) {
     using namespace iterators;
     std::list<std::string> strings{"a", "b", "c"};
     std::vector<int> numbers{1, 2, 3};
@@ -22,7 +22,7 @@ TEST(Iterators, zip_elements) {
     EXPECT_EQ(nIt, numbers.end());
 }
 
-TEST(Iterators, zip_c_arrays) {
+TEST(ZipIterators, zip_c_arrays) {
     using namespace iterators;
     int numbers[] = {1, 2, 3};
     const char * strings[] = {"a", "b", "c"};
@@ -38,7 +38,7 @@ TEST(Iterators, zip_c_arrays) {
     EXPECT_EQ(nIt, std::end(numbers));
 }
 
-TEST(Iterators, zip_inequal_length) {
+TEST(ZipIterators, zip_inequal_length) {
     using namespace iterators;
     std::list<std::string> strings{"a", "b", "c"};
     std::vector<int> numbers{1, 2, 3, 4, 5};
@@ -54,7 +54,7 @@ TEST(Iterators, zip_inequal_length) {
     EXPECT_EQ(*nIt, 4);
 }
 
-TEST(Iterators, zip_mutuate) {
+TEST(ZipIterators, zip_mutuate) {
     using namespace iterators;
     std::list<std::string> strings{"a", "b", "c"};
     std::vector<int> numbers{1, 2, 3};
@@ -69,7 +69,7 @@ TEST(Iterators, zip_mutuate) {
     EXPECT_TRUE(std::equal(strings.begin(), strings.end(), stringsResults.begin()));
 }
 
-TEST(Iterators, zip_constness) {
+TEST(ZipIterators, zip_constness) {
     using namespace iterators;
     std::list<std::string> strings;
     std::vector<int> numbers;
@@ -80,7 +80,7 @@ TEST(Iterators, zip_constness) {
     EXPECT_FALSE(std::is_const_v<std::remove_reference_t<decltype(std::get<1>(*zip(constStrings, numbers).begin()))>>);
 }
 
-TEST(Iterators, elements_no_copy) {
+TEST(ZipIterators, elements_no_copy) {
     using namespace iterators;
     std::vector<MustNotCopy> items;
     items.emplace_back("a");
@@ -95,7 +95,7 @@ TEST(Iterators, elements_no_copy) {
     }
 }
 
-TEST(Iterators, container_no_copy) {
+TEST(ZipIterators, container_no_copy) {
     using namespace iterators;
     MustNotCopyContainer<std::string> strings{"a", "b", "c"};
     MustNotCopyContainer<int> numbers{1, 2, 3};
@@ -105,7 +105,7 @@ TEST(Iterators, container_no_copy) {
     }
 }
 
-TEST(Iterators, enumerate_elements) {
+TEST(ZipIterators, enumerate_elements) {
     using namespace iterators;
     std::list<std::string> strings{"a", "b", "c"};
     std::size_t i = 0;
@@ -117,7 +117,7 @@ TEST(Iterators, enumerate_elements) {
     }
 }
 
-TEST(Iterators, enumerate_offset) {
+TEST(ZipIterators, enumerate_offset) {
     using namespace iterators;
     std::list<std::string> strings{"a", "b", "c"};
     std::size_t i = 4;
@@ -129,7 +129,7 @@ TEST(Iterators, enumerate_offset) {
     }
 }
 
-TEST(Iterators, enumerate_negative_offset) {
+TEST(ZipIterators, enumerate_negative_offset) {
     using namespace iterators;
     std::list<std::string> strings{"a", "b", "c"};
     int i = -3;
@@ -142,7 +142,7 @@ TEST(Iterators, enumerate_negative_offset) {
     }
 }
 
-TEST(Iterators, enumerate_increment) {
+TEST(ZipIterators, enumerate_increment) {
     using namespace iterators;
     std::list<std::string> strings{"a", "b", "c"};
     int i = 4;
@@ -155,7 +155,7 @@ TEST(Iterators, enumerate_increment) {
     }
 }
 
-TEST(Iterators, enumerate_mutuate) {
+TEST(ZipIterators, enumerate_mutuate) {
     using namespace iterators;
     std::list<std::string> strings{"a", "b", "c"};
     for (auto [index, string] : enumerate(strings)) {
@@ -167,7 +167,7 @@ TEST(Iterators, enumerate_mutuate) {
     EXPECT_TRUE(std::equal(strings.begin(), strings.end(), stringsResults.begin()));
 }
 
-TEST(Iterators, enumerate_constness) {
+TEST(ZipIterators, enumerate_constness) {
     using namespace iterators;
     std::list<std::string> strings;
     const auto &constStrings = strings;
@@ -175,7 +175,7 @@ TEST(Iterators, enumerate_constness) {
     EXPECT_TRUE(std::is_const_v<std::remove_reference_t<decltype(std::get<1>(*enumerate(constStrings).begin()))>>);
 }
 
-TEST(Iterators, enumerate_elements_no_copy) {
+TEST(ZipIterators, enumerate_elements_no_copy) {
     using namespace iterators;
     std::vector<MustNotCopy> items;
     items.emplace_back("a");
@@ -190,7 +190,7 @@ TEST(Iterators, enumerate_elements_no_copy) {
     }
 }
 
-TEST(Iterators, enumerate_container_no_copy) {
+TEST(ZipIterators, enumerate_container_no_copy) {
     using namespace iterators;
     std::list<std::string> strings{"a", "b", "c"};
     for (auto [index, string] : enumerate(strings)) {
@@ -198,7 +198,7 @@ TEST(Iterators, enumerate_container_no_copy) {
     }
 }
 
-TEST(Iterators, temporary_container) {
+TEST(ZipIterators, temporary_container) {
     using namespace iterators;
     std::array expected_values{4, 5, 6};
     for (auto [expected, actual] : zip(expected_values, std::array{4, 5, 6})) {
@@ -206,7 +206,7 @@ TEST(Iterators, temporary_container) {
     }
 }
 
-TEST(Iterators, temporary_no_copy) {
+TEST(ZipIterators, temporary_no_copy) {
     using namespace iterators;
     std::array expected_values{1, 2, 3};
     for (auto [expected, actual] : zip(expected_values, MustNotCopyContainer<int>({1, 2, 3}))) {
@@ -214,7 +214,7 @@ TEST(Iterators, temporary_no_copy) {
     }
 }
 
-TEST(Iterators, temporary_lifetime) {
+TEST(ZipIterators, temporary_lifetime) {
     using namespace iterators;
     std::array expected_values{1, 2, 3};
     bool allowToDie = false;
@@ -226,7 +226,7 @@ TEST(Iterators, temporary_lifetime) {
     }
 }
 
-TEST(Iterators, bool_vector) {
+TEST(ZipIterators, bool_vector) {
     using namespace iterators;
     std::vector<bool> booleans{true, true, false, false};
     for (auto [_, boolean] : enumerate(booleans)) {

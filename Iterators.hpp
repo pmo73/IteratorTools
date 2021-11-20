@@ -160,6 +160,80 @@ namespace iterators {
             T start;
             T increment;
         };
+
+        template<typename Container, typename Function>
+        struct TransformContainer {
+            template<typename T>
+            TransformContainer(T &&init, Function &&func) : container(std::forward<T>(init)),
+                                                            f(std::forward<Function>(func)) {}
+
+            template<bool End = false>
+            class TransformIterator {
+                static_assert(std::is_nothrow_copy_constructible_v<Function>, "Function object must be copyable");
+                using Iterator = std::conditional_t<End, decltype(std::end(
+                        std::declval<Container>())), decltype(std::begin(std::declval<Container>()))>;
+                using Element = decltype(*std::declval<Iterator>());
+                static_assert(std::is_invocable_v<Function, Element>,
+                              "Function object is not callable with container element type");
+                using InvocationResult = std::invoke_result_t<Function, Element>;
+                friend TransformIterator<!End>;
+            public:
+                TransformIterator(Container &container,
+                                  const Function &func) noexcept(std::is_nothrow_copy_constructible_v<Function>): it(
+                        create(container)), f(func) {}
+
+                TransformIterator &operator++() noexcept(noexcept(++this->it)){
+                    ++it;
+                    return *this;
+                }
+
+                template<bool B>
+                bool operator==(const TransformIterator<B> &other) const noexcept(noexcept(this->it == this->it)) {
+                    return it == other.it;
+                }
+
+                template<bool B>
+                bool operator!=(const TransformIterator<B> &other) const noexcept(noexcept(*this == *this)) {
+                    return !(*this == other);
+                }
+
+                auto operator*() const noexcept(noexcept(*(this->it))) -> InvocationResult {
+                    return f(*it);
+                }
+
+                template<bool ReturnsRef = std::is_lvalue_reference_v<InvocationResult>>
+                auto operator->() const noexcept(noexcept(**this))
+                    -> std::enable_if_t<ReturnsRef, std::add_pointer_t<std::remove_reference_t<InvocationResult>>> {
+                    return &**this;
+                }
+
+            private:
+                static auto create(Container &container) noexcept {
+                    if constexpr(End) {
+                        return std::end(container);
+                    } else {
+                        return std::begin(container);
+                    }
+                }
+
+                Iterator it;
+                Function f;
+            };
+
+            TransformIterator<false> begin() const noexcept(std::is_nothrow_constructible_v<TransformIterator<false>,
+                    std::add_lvalue_reference<Container>, Function>) {
+                return TransformIterator<false>(container, f);
+            }
+
+            TransformIterator<true> end() const noexcept(std::is_nothrow_constructible_v<TransformIterator<true>,
+                    std::add_lvalue_reference<Container>, Function>) {
+                return TransformIterator<true>(container, f);
+            }
+
+        private:
+            Container container;
+            Function f;
+        };
     }
 
     /**
@@ -215,6 +289,11 @@ namespace iterators {
         return const_zip(impl::CounterContainer(start, increment), std::forward<Container>(container));
     }
 
+    template<typename Container, typename Function>
+    auto transform(Container &&container, Function &&function) {
+        return impl::TransformContainer<Container, Function>(std::forward<Container>(container),
+                                                             std::forward<Function>(function));
+    }
 }
 
 #endif //ITERATORTOOLS_ITERATORS_HPP
