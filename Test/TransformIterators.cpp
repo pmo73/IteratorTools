@@ -79,3 +79,20 @@ TEST(TransformIterators, elements_no_copy) {
         item += std::to_string(2);
     }
 }
+TEST(TransformIterators, container_no_copy) {
+    using iterators::transform;
+    using iterators::const_zip;
+    MustNotCopyContainer<std::pair<std::string, int>> strings{{"a", 1}, {"b", 2}, {"c", 3}};
+    auto getString = [](auto &a) -> auto & {
+        return a.first;
+    };
+
+    for (auto &string : transform(strings, getString)) {
+        string += "x";
+    }
+
+    std::vector<std::string> results{"ax", "bx", "cx"};
+    for (auto [string, result] : const_zip(transform(std::move(strings), getString), results)) {
+        EXPECT_EQ(string, result);
+    }
+}

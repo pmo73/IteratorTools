@@ -25,6 +25,9 @@ namespace iterators {
         template<bool Cond, typename T>
         using reference_if_t = typename reference_if<Cond, T>::type;
 
+        template<bool Cond, typename T>
+        using const_if_t = std::conditional_t<Cond, std::add_const_t<T>, T>;
+
         template<typename ...Iterable>
         struct zip_ {
             using ContainerTuple = std::tuple<Iterable...>;
@@ -167,20 +170,21 @@ namespace iterators {
             TransformContainer(T &&init, Function &&func) : container(std::forward<T>(init)),
                                                             f(std::forward<Function>(func)) {}
 
-            template<bool End = false>
+            template<bool Const, bool End>
             class TransformIterator {
                 static_assert(std::is_nothrow_copy_constructible_v<Function>, "Function object must be copyable");
+                using Source = std::add_lvalue_reference_t<const_if_t<Const, std::remove_reference_t<Container>>>;
                 using Iterator = std::conditional_t<End,
-                        decltype(std::end(std::declval<std::add_lvalue_reference_t<Container>>())),
-                        decltype(std::begin(std::declval<std::add_lvalue_reference_t<Container>>()))>;
+                        decltype(std::end(std::declval<Source>())),
+                        decltype(std::begin(std::declval<Source>()))>;
                 using Element = decltype(*std::declval<Iterator>());
                 static_assert(std::is_invocable_v<Function, Element>,
                               "Function object is not callable with container element type");
                 using InvocationResult = std::invoke_result_t<Function, Element>;
-                friend TransformIterator<!End>;
+                friend TransformIterator<Const, !End>;
             public:
-                TransformIterator(Container &container, const Function &func)
-                noexcept(std::is_nothrow_copy_constructible_v<Function>): it(create(container)), f(func) {}
+                TransformIterator(Source source, const Function &func)
+                noexcept(std::is_nothrow_copy_constructible_v<Function>): it(create(source)), f(func) {}
 
                 TransformIterator &operator++() noexcept(noexcept(++this->it)) {
                     ++it;
@@ -188,12 +192,12 @@ namespace iterators {
                 }
 
                 template<bool B>
-                bool operator==(const TransformIterator<B> &other) const noexcept(noexcept(this->it == this->it)) {
+                bool operator==(const TransformIterator<Const, B> &other) const noexcept(noexcept(this->it == this->it)) {
                     return it == other.it;
                 }
 
                 template<bool B>
-                bool operator!=(const TransformIterator<B> &other) const noexcept(noexcept(*this == *this)) {
+                bool operator!=(const TransformIterator<Const, B> &other) const noexcept(noexcept(*this == *this)) {
                     return !(*this == other);
                 }
 
@@ -208,11 +212,11 @@ namespace iterators {
                 }
 
             private:
-                static auto create(Container &container) noexcept {
+                static auto create(Source source) noexcept {
                     if constexpr(End) {
-                        return std::end(container);
+                        return std::end(source);
                     } else {
-                        return std::begin(container);
+                        return std::begin(source);
                     }
                 }
 
@@ -220,24 +224,24 @@ namespace iterators {
                 Function f;
             };
 
-            TransformIterator<false> begin() const noexcept(std::is_nothrow_constructible_v<TransformIterator<false>,
+            auto begin() const noexcept(std::is_nothrow_constructible_v<TransformIterator<true, false>,
                     std::add_lvalue_reference<Container>, Function>) {
-                return TransformIterator<false>(container, f);
+                return TransformIterator<true, false>(container, f);
             }
 
-            TransformIterator<true> end() const noexcept(std::is_nothrow_constructible_v<TransformIterator<true>,
+            auto end() const noexcept(std::is_nothrow_constructible_v<TransformIterator<true, true>,
                     std::add_lvalue_reference<Container>, Function>) {
-                return TransformIterator<true>(container, f);
+                return TransformIterator<true, true>(container, f);
             }
 
-            TransformIterator<false> begin() noexcept(std::is_nothrow_constructible_v<TransformIterator<false>,
+            auto begin() noexcept(std::is_nothrow_constructible_v<TransformIterator<false, false>,
                     std::add_lvalue_reference<Container>, Function>) {
-                return TransformIterator<false>(container, f);
+                return TransformIterator<false, false>(container, f);
             }
 
-            TransformIterator<true> end() noexcept(std::is_nothrow_constructible_v<TransformIterator<true>,
+            auto end() noexcept(std::is_nothrow_constructible_v<TransformIterator<false, true>,
                     std::add_lvalue_reference<Container>, Function>) {
-                return TransformIterator<true>(container, f);
+                return TransformIterator<false, true>(container, f);
             }
 
         private:
