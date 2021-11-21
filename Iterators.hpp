@@ -13,17 +13,7 @@
 namespace iterators {
     namespace impl {
         template<bool Cond, typename T>
-        struct reference_if {
-            using type = T;
-        };
-
-        template<typename T>
-        struct reference_if<true, T> {
-            using type = std::add_lvalue_reference_t<T>;
-        };
-
-        template<bool Cond, typename T>
-        using reference_if_t = typename reference_if<Cond, T>::type;
+        using reference_if_t = std::conditional_t<Cond, std::add_lvalue_reference_t<T>, T>;
 
         template<bool Cond, typename T>
         using const_if_t = std::conditional_t<Cond, std::add_const_t<T>, T>;
@@ -279,7 +269,7 @@ namespace iterators {
      * Function that can be used in range based loops to emulate the enumerate iterator from python.
      * @tparam Container Container type that supports iteration
      * @tparam T type of enumerate counter (default std::size_t)
-     * @param container Arbitrary number of containers
+     * @param container Source container
      * @param start Optional index offset (default 0)
      * @param increment Optional index increment (default 1)
      * @return zip-container class that provides begin and end members to be used in range based for-loops.
@@ -293,7 +283,7 @@ namespace iterators {
      * enumerate variant that does not allow manipulation of the container elements
      * @tparam Container Container type that supports iteration
      * @tparam T type of enumerate counter (default std::size_t)
-     * @param container Arbitrary number of containers
+     * @param container Source container
      * @param start Optional index offset (default 0)
      * @param increment Optional index increment (default 1)
      * @return zip-container class that provides begin and end members to be used in range based for-loops.
