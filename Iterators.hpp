@@ -303,6 +303,14 @@ namespace iterators {
         return const_zip(impl::CounterContainer(start, increment), std::forward<Container>(container));
     }
 
+    /**
+     * Transform view similar to std::ranges::transform_view
+     * @tparam Container Container type that supports iteration
+     * @tparam Function Function object that is callable with container elements
+     * @param container source container
+     * @param function function object that is applied to each element
+     * @return TransformContainer class that provides begin and end members to be used in range based for loops
+     */
     template<typename Container, typename Function>
     auto transform(Container &&container, Function &&function) {
         return impl::TransformContainer<Container, Function>(std::forward<Container>(container),
