@@ -49,8 +49,10 @@ TEST(TransformIterators, constness) {
 
     auto t = transform(map, values);
     auto constT = transform(constMap, values);
+    const auto &constTRef = t;
     EXPECT_FALSE(std::is_const_v<std::remove_reference_t<decltype(*t.begin())>>);
     EXPECT_TRUE(std::is_const_v<std::remove_reference_t<decltype(*constT.begin())>>);
+    EXPECT_TRUE(std::is_const_v<std::remove_reference_t<decltype(*constTRef.begin())>>);
 }
 
 TEST(TransformIterators, deref_member_access) {
