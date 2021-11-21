@@ -96,3 +96,17 @@ TEST(TransformIterators, container_no_copy) {
         EXPECT_EQ(string, result);
     }
 }
+TEST(TransformIterators, temporary_lifetime) {
+    using iterators::transform;
+    using iterators::const_zip;
+    std::array expected_values{1, 2, 3};
+    bool allowToDie = false;
+    auto identity = [](auto a) {return a;};
+    for (auto[expected, actual]: const_zip(expected_values,
+                                           transform(LifeTimeChecker<int>({1, 2, 3}, allowToDie), identity))) {
+        EXPECT_EQ(expected, actual);
+        if (actual == 3) { // after the last iteration, the temporary container may be destroyed
+            allowToDie = true;
+        }
+    }
+}
