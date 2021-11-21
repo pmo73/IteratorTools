@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include <array>
+#include <vector>
 #include <string>
 #include <type_traits>
 #include <unordered_map>
@@ -59,4 +60,22 @@ TEST(TransformIterators, deref_member_access) {
     auto it = transform(map, identity).begin();
     EXPECT_EQ(it->first, 1);
     EXPECT_EQ(it->second, "1");
+}
+
+TEST(TransformIterators, elements_no_copy) {
+    using iterators::transform;
+    std::vector<MustNotCopy> items;
+    items.emplace_back("a");
+    items.emplace_back("b");
+    items.emplace_back("c");
+    auto getString = [](auto &a) -> auto & {
+        return a.s;
+    };
+    for (auto &item : transform(items, getString)) {
+        item += std::to_string(1);
+    }
+
+    for (auto &item : transform(std::move(items), getString)) {
+        item += std::to_string(2);
+    }
 }
