@@ -80,6 +80,15 @@ TEST(ZipIterators, zip_constness) {
     EXPECT_FALSE(std::is_const_v<std::remove_reference_t<decltype(std::get<1>(*zip(constStrings, numbers).begin()))>>);
 }
 
+TEST(ZipIterators, zip_iterator_types) {
+    using namespace iterators;
+    std::list<int> forward {1, 2, 3};
+    std::vector<int> backward{3, 2, 1};
+    auto zipView = const_zip(forward, backward);
+    constexpr bool res = std::is_same_v<decltype(zipView.begin()), decltype(zipView.end())>;
+    EXPECT_TRUE(res);
+}
+
 TEST(ZipIterators, elements_no_copy) {
     using namespace iterators;
     std::vector<MustNotCopy> items;
