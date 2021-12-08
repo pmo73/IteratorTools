@@ -257,7 +257,8 @@ namespace iterators {
                 return !(*this == other);
             }
 
-            auto operator*() const noexcept(noexcept(*(this->it))) -> InvocationResult {
+            auto operator*() const noexcept(noexcept(*(this->it)) &&
+                                            std::is_nothrow_invocable_v<Function, Element>) -> InvocationResult {
                 return f(*it);
             }
 
