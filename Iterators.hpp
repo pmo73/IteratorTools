@@ -246,9 +246,9 @@ namespace iterators {
                           "Function object is not callable with container element type");
         public:
             using reference = std::invoke_result_t<Function, Element>;
-            using value_type = std::remove_reference_t<reference>;
+            using value_type = std::remove_cv_t<std::remove_reference_t<reference>>;
             using pointer = std::conditional_t<std::is_lvalue_reference_v<reference>,
-                    std::add_pointer_t<value_type>, void>;
+                    std::add_pointer_t<std::remove_reference_t<reference>>, void>;
             using difference_type = typename std::iterator_traits<Iterator>::difference_type;
             using iterator_category = typename std::iterator_traits<Iterator>::iterator_category;
 
