@@ -20,7 +20,13 @@ namespace iterators {
 
         template<typename ...Iterable>
         struct ZipContainer {
+        private:
             using ContainerTuple = std::tuple<Iterable...>;
+            using IteratorTuple = std::tuple<decltype(std::begin(
+                    std::declval<std::add_lvalue_reference_t<Iterable>>()))...>;
+            using IteratorSentinelTuple = std::tuple<decltype(std::end(
+                    std::declval<std::add_lvalue_reference_t<Iterable>>()))...>;
+        public:
             template<typename ...Container>
             explicit ZipContainer(Container &&...containers) : containers(std::forward<Container>(containers)...) {}
 
@@ -76,16 +82,22 @@ namespace iterators {
                 Iterators iterators;
             };
 
-            auto begin() {
-                using IteratorTuple = std::tuple<decltype(std::begin(
-                        std::declval<std::add_lvalue_reference_t<Iterable>>()))...>;
+            ZipIterator<IteratorTuple> begin() {
                 return ZipIterator<IteratorTuple>(
                         std::apply([](auto &&...c) { return std::tuple(std::begin(c)...); }, containers));
             }
 
-            auto end() {
-                using IteratorSentinelTuple = std::tuple<decltype(std::end(
-                        std::declval<std::add_lvalue_reference_t<Iterable>>()))...>;
+            ZipIterator<IteratorSentinelTuple> end() {
+                return ZipIterator<IteratorSentinelTuple>(
+                        std::apply([](auto &&...c) { return std::tuple(std::end(c)...); }, containers));
+            }
+
+            ZipIterator<IteratorTuple> begin() const {
+                return ZipIterator<IteratorTuple>(
+                        std::apply([](auto &&...c) { return std::tuple(std::begin(c)...); }, containers));
+            }
+
+            ZipIterator<IteratorSentinelTuple> end() const {
                 return ZipIterator<IteratorSentinelTuple>(
                         std::apply([](auto &&...c) { return std::tuple(std::end(c)...); }, containers));
             }
