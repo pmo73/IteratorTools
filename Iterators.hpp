@@ -28,6 +28,19 @@ namespace iterators {
         using reference_if_t = std::conditional_t<Cond, std::add_lvalue_reference_t<T>, T>;
 
         template<typename T>
+        std::true_type
+        container_test(decltype(std::begin(std::declval<T>()), std::end(std::declval<T>()), std::declval<T>()));
+
+        template<typename T>
+        std::false_type container_test(...);
+
+        template<typename T>
+        struct is_container : decltype(container_test<T>(std::declval<T>())) {};
+
+        template<typename T>
+        constexpr inline bool is_container_v = is_container<T>::value;
+
+        template<typename T>
         std::true_type deref_test(decltype(*std::declval<T>(), std::declval<T>()));
 
         template<typename T>
@@ -69,6 +82,57 @@ namespace iterators {
 
         NOEXCEPT(*, is_nothrow_dereferencible)
 
+        template<typename Iterators>
+        class ZipIterator {
+            using ValueTuple = impl::values_t<Iterators>;
+        public:
+            explicit ZipIterator(const Iterators &iterators) : iterators(iterators) {}
+
+            template<typename ...Its>
+            explicit ZipIterator(Its ...its) : iterators(std::make_tuple(its...)) {}
+
+            ZipIterator &operator++() noexcept(impl::is_nothrow_incrementible_v<Iterators>) {
+                std::apply([](auto &&...it) { (++it, ...); }, iterators);
+                return *this;
+            }
+
+            template<typename Its>
+            constexpr bool operator==(const ZipIterator<Its> &other) const
+            noexcept(noexcept(this->oneEqual(this->iterators, other.getIterators()))) {
+                return oneEqual(iterators, other.getIterators());
+            }
+
+            template<typename Its>
+            constexpr bool operator!=(const ZipIterator<Its> &other) const noexcept(noexcept(*this == other)) {
+                return !(*this == other);
+            }
+
+            auto operator*() const noexcept(impl::is_nothrow_dereferencible_v<Iterators>) {
+                return std::apply([](auto &&...it) { return ValueTuple(*it...); }, iterators);
+            }
+
+            constexpr auto getIterators() const noexcept -> const Iterators& {
+                return iterators;
+            }
+
+        private:
+            template<typename Tuple1, typename Tuple2, std::size_t ...Idx>
+            static constexpr bool
+            oneEqualImpl(const Tuple1 &t1, const Tuple2 &t2, std::index_sequence<Idx...>) noexcept((noexcept(
+                    std::get<Idx>(t1) == std::get<Idx>(t2)) && ...)) {
+                return (... || (std::get<Idx>(t1) == std::get<Idx>(t2)));
+            }
+
+            template<typename Tuple1, typename Tuple2>
+            static constexpr bool oneEqual(const Tuple1 &t1, const Tuple2 &t2)
+            noexcept(noexcept(oneEqualImpl(t1, t2, std::make_index_sequence<std::tuple_size_v<Tuple1>>{}))) {
+                static_assert(std::tuple_size_v<Tuple1> == std::tuple_size_v<Tuple2>);
+                return oneEqualImpl(t1, t2, std::make_index_sequence<std::tuple_size_v<Tuple1>>{});
+            }
+
+            Iterators iterators;
+        };
+
         template<typename ...Iterable>
         struct ZipContainer {
         private:
@@ -81,53 +145,6 @@ namespace iterators {
             template<typename ...Container>
             explicit ZipContainer(Container &&...containers) : containers(std::forward<Container>(containers)...) {}
 
-            template<typename Iterators>
-            class ZipIterator {
-                using ValueTuple = values_t<Iterators>;
-            public:
-                explicit ZipIterator(const Iterators &iterators) : iterators(iterators) {}
-
-                ZipIterator &operator++() noexcept(is_nothrow_incrementible_v<Iterators>) {
-                    std::apply([](auto &&...it) { (++it, ...); }, iterators);
-                    return *this;
-                }
-
-                template<typename Its>
-                constexpr bool operator==(const ZipIterator<Its> &other) const
-                noexcept(noexcept(this->oneEqual(this->iterators, other.getIterators()))) {
-                    return oneEqual(iterators, other.getIterators());
-                }
-
-                template<typename Its>
-                constexpr bool operator!=(const ZipIterator<Its> &other) const noexcept(noexcept(*this == other)) {
-                    return !(*this == other);
-                }
-
-                auto operator*() const noexcept(is_nothrow_dereferencible_v<Iterators>) {
-                    return std::apply([](auto &&...it) { return ValueTuple(*it...); }, iterators);
-                }
-
-                constexpr auto getIterators() const noexcept -> const Iterators& {
-                    return iterators;
-                }
-
-            private:
-                template<typename Tuple1, typename Tuple2, std::size_t ...Idx>
-                static constexpr bool
-                oneEqualImpl(const Tuple1 &t1, const Tuple2 &t2, std::index_sequence<Idx...>) noexcept((noexcept(
-                        std::get<Idx>(t1) == std::get<Idx>(t2)) && ...)) {
-                    return (... || (std::get<Idx>(t1) == std::get<Idx>(t2)));
-                }
-
-                template<typename Tuple1, typename Tuple2>
-                static constexpr bool oneEqual(const Tuple1 &t1, const Tuple2 &t2)
-                noexcept(noexcept(oneEqualImpl(t1, t2, std::make_index_sequence<std::tuple_size_v<Tuple1>>{}))) {
-                    static_assert(std::tuple_size_v<Tuple1> == std::tuple_size_v<Tuple2>);
-                    return oneEqualImpl(t1, t2, std::make_index_sequence<std::tuple_size_v<Tuple1>>{});
-                }
-
-                Iterators iterators;
-            };
 
             ZipIterator<IteratorTuple> begin() {
                 return ZipIterator<IteratorTuple>(
@@ -211,6 +228,17 @@ namespace iterators {
     }
 
     /**
+     * Function that is used to create a ZipIterator from an arbitrary number of iterators
+     * @tparam Iterators type of iterators
+     * @param iterators arbitrary number of iterators
+     * @return ZipIterator
+     */
+    template<typename ...Iterators, std::enable_if_t<(impl::dereferencible_v<Iterators> && ...), int> = 0>
+    auto zip(Iterators ...iterators) -> impl::ZipIterator<std::tuple<Iterators...>> {
+        return impl::ZipIterator<std::tuple<Iterators...>>(iterators...);
+    }
+
+    /**
      * Function that can be used in range based loops to emulate the zip iterator from python.
      * As in python: if the passed containers have different lengths, the container with the least items decides
      * the overall range
@@ -218,7 +246,7 @@ namespace iterators {
      * @param iterable Arbitrary number of containers
      * @return zip-container class that provides begin and end members to be used in range based for-loops
      */
-    template<typename ...Iterable>
+    template<typename ...Iterable, std::enable_if_t<(impl::is_container_v<Iterable> && ...), int> = 0>
     auto zip(Iterable &&...iterable) {
         return impl::ZipContainer<Iterable...>(std::forward<Iterable>(iterable)...);
     }
