@@ -49,7 +49,7 @@ using namespace iterators;
 std::list<std::string> strings{"a", "b", "c"};
 std::vector<int> numbers{1, 2, 3};
 auto zipBegin = zip(strings.begin(), numbers.begin());
-auto zipBEnd = zip(strings.end(), numbers.end());
+auto zipEnd = zip(strings.end(), numbers.end());
 while (zipBegin != zipEnd) {
     auto [s, num] = *zipBegin;
     // ...
