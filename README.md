@@ -51,7 +51,7 @@ std::vector<int> numbers{1, 2, 3};
 auto zipBegin = zip(strings.begin(), numbers.begin());
 auto zipBEnd = zip(strings.end(), numbers.end());
 while (zipBegin != zipEnd) {
-    auto &[s, num] = *zipBegin;
+    auto [s, num] = *zipBegin;
     // ...
     ++zipBegin;
 }
