@@ -78,6 +78,10 @@ TEST(ZipIterators, zip_constness) {
     EXPECT_TRUE(std::is_const_v<std::remove_reference_t<decltype(std::get<1>(*const_zip(strings, numbers).begin()))>>);
     EXPECT_TRUE(std::is_const_v<std::remove_reference_t<decltype(std::get<0>(*zip(constStrings, numbers).begin()))>>);
     EXPECT_FALSE(std::is_const_v<std::remove_reference_t<decltype(std::get<1>(*zip(constStrings, numbers).begin()))>>);
+    EXPECT_TRUE(
+            std::is_const_v<std::remove_reference_t<decltype(std::get<0>(*zip(strings.cbegin(), numbers.begin())))>>);
+    EXPECT_FALSE(
+            std::is_const_v<std::remove_reference_t<decltype(std::get<1>(*zip(strings.cbegin(), numbers.begin())))>>);
 }
 
 TEST(ZipIterators, zip_iterator_types) {
@@ -87,6 +91,24 @@ TEST(ZipIterators, zip_iterator_types) {
     auto zipView = const_zip(forward, backward);
     constexpr bool res = std::is_same_v<decltype(zipView.begin()), decltype(zipView.end())>;
     EXPECT_TRUE(res);
+    constexpr bool res1 = std::is_same_v<decltype(zip(forward.begin(), backward.begin())), decltype(zip(forward.end(), backward.end()))>;
+    EXPECT_TRUE(res1);
+}
+
+TEST(Iterators, zip_iterator_manual) {
+    using namespace iterators;
+    std::list<int> forward {1, 2, 3};
+    std::vector<int> backward{3, 2, 1};
+    auto start = zip(forward.cbegin(), backward.cbegin());
+    auto end = zip(forward.cend(), backward.cend());
+    std::size_t counter = 0;
+    while (start != end) {
+        EXPECT_EQ(std::get<0>(*start) + std::get<1>(*start), 4);
+        ++counter;
+        ++start;
+    }
+
+    EXPECT_EQ(counter, 3);
 }
 
 TEST(ZipIterators, elements_no_copy) {
