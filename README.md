@@ -43,7 +43,7 @@ for (auto [string, number] : const_zip(strings, numbers)) {
     std::cout << string << " " << number << std::endl;
 }
 ```
-Additionally, using an overload of `zip`, t dthe direct use of iterators is also possible:
+Additionally, using an overload of `zip`, the direct use of iterators is also possible:
 ```c++
 using namespace iterators;
 std::list<std::string> strings{"a", "b", "c"};
