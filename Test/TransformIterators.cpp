@@ -98,6 +98,7 @@ TEST(TransformIterators, container_no_copy) {
         EXPECT_EQ(string, result);
     }
 }
+
 TEST(TransformIterators, temporary_lifetime) {
     using iterators::transform;
     using iterators::const_zip;
