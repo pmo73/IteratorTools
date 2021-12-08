@@ -9,6 +9,7 @@
 #define ITERATORTOOLS_ITERATORS_HPP
 
 #include <tuple>
+#include <iterator>
 
 #define NOEXCEPT(OP, NAME) \
         template<typename T> \
@@ -237,15 +238,20 @@ namespace iterators {
             T increment;
         };
 
-
         template<typename Iterator, typename Function>
         class TransformIterator {
             static_assert(std::is_copy_constructible_v<Function>, "Function object must be copyable");
-            using Element = decltype(*std::declval<Iterator>());
+            using Element = dereference_t<Iterator>;
             static_assert(std::is_invocable_v<Function, Element>,
                           "Function object is not callable with container element type");
-            using InvocationResult = std::invoke_result_t<Function, Element>;
         public:
+            using reference = std::invoke_result_t<Function, Element>;
+            using value_type = std::remove_reference_t<reference>;
+            using pointer = std::conditional_t<std::is_lvalue_reference_v<reference>,
+                    std::add_pointer_t<value_type>, void>;
+            using difference_type = typename std::iterator_traits<Iterator>::difference_type;
+            using iterator_category = typename std::iterator_traits<Iterator>::iterator_category;
+
             TransformIterator(const Iterator &iterator, const Function &func) noexcept(
             std::is_nothrow_copy_constructible_v<Iterator> && std::is_nothrow_copy_constructible_v<Function>): it(
                     iterator), f(func) {}
@@ -264,13 +270,12 @@ namespace iterators {
             }
 
             auto operator*() const noexcept(noexcept(*(this->it)) &&
-                                            std::is_nothrow_invocable_v<Function, Element>) -> InvocationResult {
+                                            std::is_nothrow_invocable_v<Function, Element>) -> reference {
                 return f(*it);
             }
 
-            template<bool ReturnsRef = std::is_lvalue_reference_v<InvocationResult>>
-            auto operator->() const noexcept(noexcept(**this))
-            -> std::enable_if_t<ReturnsRef, std::add_pointer_t<std::remove_reference_t<InvocationResult>>> {
+            template<bool ReturnsRef = std::is_lvalue_reference_v<reference>>
+            auto operator->() const noexcept(noexcept(**this)) -> std::enable_if_t<ReturnsRef, pointer> {
                 return &**this;
             }
 
