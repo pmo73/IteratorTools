@@ -43,6 +43,19 @@ for (auto [string, number] : const_zip(strings, numbers)) {
     std::cout << string << " " << number << std::endl;
 }
 ```
+Additionally, using an overload of `zip`, t dthe direct use of iterators is also possible:
+```c++
+using namespace iterators;
+std::list<std::string> strings{"a", "b", "c"};
+std::vector<int> numbers{1, 2, 3};
+auto zipBegin = zip(strings.begin(), numbers.begin());
+auto zipBEnd = zip(strings.end(), numbers.end());
+while (zipBegin != zipEnd) {
+    auto &[s, num] = *zipBegin;
+    // ...
+    ++zipBegin;
+}
+```
 
 As in Python, the shortest range decides the overall range:
 ```c++
