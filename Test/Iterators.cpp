@@ -74,6 +74,8 @@ TEST(Iterators, zip_constness) {
     std::list<std::string> strings;
     std::vector<int> numbers;
     const auto &constStrings = strings;
+    auto zipView = zip(strings, numbers);
+    const auto &constZipView = zipView;
     EXPECT_TRUE(std::is_const_v<std::remove_reference_t<decltype(std::get<0>(*const_zip(strings, numbers).begin()))>>);
     EXPECT_TRUE(std::is_const_v<std::remove_reference_t<decltype(std::get<1>(*const_zip(strings, numbers).begin()))>>);
     EXPECT_TRUE(std::is_const_v<std::remove_reference_t<decltype(std::get<0>(*zip(constStrings, numbers).begin()))>>);
@@ -82,6 +84,8 @@ TEST(Iterators, zip_constness) {
             std::is_const_v<std::remove_reference_t<decltype(std::get<0>(*zip(strings.cbegin(), numbers.begin())))>>);
     EXPECT_FALSE(
             std::is_const_v<std::remove_reference_t<decltype(std::get<1>(*zip(strings.cbegin(), numbers.begin())))>>);
+    EXPECT_FALSE(std::is_const_v<std::remove_reference_t<decltype(std::get<0>(*zipView.begin()))>>);
+    EXPECT_TRUE(std::is_const_v<std::remove_reference_t<decltype(std::get<0>(*constZipView.begin()))>>);
 }
 
 TEST(Iterators, zip_iterator_types) {
