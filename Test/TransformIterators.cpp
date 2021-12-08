@@ -64,6 +64,20 @@ TEST(TransformIterators, deref_member_access) {
     EXPECT_EQ(it->second, "1");
 }
 
+TEST(TransformIterators, manual) {
+    std::map<int, std::string> map{{1, "1"}, {2, "2"}, {3, "3"}};
+    auto value = [](auto &pair) -> auto & { return pair.second; };
+    auto tBegin = iterators::transform(map.begin(), value);
+    auto tEnd = iterators::transform(map.end(), value);
+    std::array expected{"1", "2", "3"};
+    auto zBegin = iterators::zip(tBegin, expected.begin());
+    auto zEnd = iterators::zip(tEnd, expected.end());
+    while (zBegin != zEnd) {
+        EXPECT_EQ(std::get<0>(*zBegin), std::get<1>(*zBegin));
+        ++zBegin;
+    }
+}
+
 TEST(TransformIterators, elements_no_copy) {
     using iterators::transform;
     std::vector<MustNotCopy> items;

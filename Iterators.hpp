@@ -372,6 +372,19 @@ namespace iterators {
     }
 
     /**
+     * Creates a TransformIterator from an arbitrary iterator and a function object
+     * @tparam Iterator type of iterator
+     * @tparam Function  type of function
+     * @param iterator base iterator
+     * @param function transformation function
+     * @return TransformIterator
+     */
+    template<typename Iterator, typename Function, std::enable_if_t<impl::dereferencible_v<Iterator>, int> = 0>
+    auto transform(const Iterator &iterator, Function &&function) -> impl::TransformIterator<Iterator, Function> {
+        return impl::TransformIterator<Iterator, Function>(iterator, std::forward<Function>(function));
+    }
+
+    /**
      * Transform view similar to std::ranges::transform_view
      * @tparam Container Container type that supports iteration
      * @tparam Function Function object that is callable with container elements
@@ -379,7 +392,7 @@ namespace iterators {
      * @param function function object that is applied to each element
      * @return TransformContainer class that provides begin and end members to be used in range based for loops
      */
-    template<typename Container, typename Function>
+    template<typename Container, typename Function, std::enable_if_t<impl::is_container_v<Container>, int> = 0>
     auto transform(Container &&container, Function &&function) {
         return impl::TransformContainer<Container, Function>(std::forward<Container>(container),
                                                              std::forward<Function>(function));
