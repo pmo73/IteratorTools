@@ -86,10 +86,12 @@ namespace iterators {
         class ZipIterator {
             using ValueTuple = impl::values_t<Iterators>;
         public:
-            explicit ZipIterator(const Iterators &iterators) : iterators(iterators) {}
+            explicit constexpr ZipIterator(
+                    const Iterators &iterators) noexcept(std::is_nothrow_copy_constructible_v<Iterators>)
+                    : iterators(iterators) {}
 
             template<typename ...Its>
-            explicit ZipIterator(Its ...its) : iterators(std::make_tuple(its...)) {}
+            explicit constexpr ZipIterator(Its ...its) : iterators(std::make_tuple(its...)) {}
 
             ZipIterator &operator++() noexcept(impl::is_nothrow_incrementible_v<Iterators>) {
                 std::apply([](auto &&...it) { (++it, ...); }, iterators);
@@ -146,22 +148,22 @@ namespace iterators {
             explicit ZipContainer(Container &&...containers) : containers(std::forward<Container>(containers)...) {}
 
 
-            ZipIterator<IteratorTuple> begin() {
+            auto begin() {
                 return ZipIterator<IteratorTuple>(
                         std::apply([](auto &&...c) { return std::tuple(std::begin(c)...); }, containers));
             }
 
-            ZipIterator<IteratorSentinelTuple> end() {
+            auto end() {
                 return ZipIterator<IteratorSentinelTuple>(
                         std::apply([](auto &&...c) { return std::tuple(std::end(c)...); }, containers));
             }
 
-            ZipIterator<IteratorTuple> begin() const {
+            auto begin() const {
                 return ZipIterator<IteratorTuple>(
                         std::apply([](auto &&...c) { return std::tuple(std::begin(c)...); }, containers));
             }
 
-            ZipIterator<IteratorSentinelTuple> end() const {
+            auto end() const {
                 return ZipIterator<IteratorSentinelTuple>(
                         std::apply([](auto &&...c) { return std::tuple(std::end(c)...); }, containers));
             }
