@@ -10,10 +10,64 @@
 
 #include <tuple>
 
+#define NOEXCEPT(OP, NAME) \
+        template<typename T> \
+        struct NAME { \
+            static constexpr bool value = false; \
+        }; \
+        template<typename ...Ts> \
+        struct NAME <std::tuple<Ts...>> { \
+            static constexpr bool value = (... && noexcept(OP std::declval<std::add_lvalue_reference_t<Ts>>())); \
+        };                 \
+        template<typename T> \
+        inline constexpr bool NAME##_v = NAME<T>::value;
+
 namespace iterators {
     namespace impl {
         template<bool Cond, typename T>
         using reference_if_t = std::conditional_t<Cond, std::add_lvalue_reference_t<T>, T>;
+
+        template<typename T>
+        std::true_type deref_test(decltype(*std::declval<T>(), std::declval<T>()));
+
+        template<typename T>
+        std::false_type deref_test(...);
+
+        template<typename T>
+        struct dereferencible : decltype(deref_test<T>(std::declval<T>())) {};
+
+        template<typename T>
+        constexpr inline bool dereferencible_v = dereferencible<T>::value;
+
+        struct empty {};
+
+        template<typename T, bool B>
+        struct dereference {
+            using type = empty;
+        };
+
+        template<typename T>
+        struct dereference<T, true> {
+            using type = decltype(*std::declval<T>());
+        };
+
+        template<typename T>
+        using dereference_t = typename dereference<T, dereferencible_v<T>>::type;
+
+        template<typename T>
+        struct values{};
+
+        template<typename ...Ts>
+        struct values<std::tuple<Ts...>> {
+            using type = std::tuple<dereference_t<Ts>...>;
+        };
+
+        template<typename T>
+        using values_t = typename values<T>::type;
+
+        NOEXCEPT(++, is_nothrow_incrementible)
+
+        NOEXCEPT(*, is_nothrow_dereferencible)
 
         template<typename ...Iterable>
         struct ZipContainer {
@@ -29,22 +83,19 @@ namespace iterators {
 
             template<typename Iterators>
             class ZipIterator {
-                template<typename Container>
-                using IteratorReference = std::add_lvalue_reference_t<decltype(std::begin(
-                        std::declval<std::add_lvalue_reference_t<Container>>()))>;
-                using ValueTuple = std::tuple<decltype(*std::begin(
-                        std::declval<std::add_lvalue_reference_t<Iterable>>()))...>;
+                using ValueTuple = values_t<Iterators>;
             public:
                 explicit ZipIterator(const Iterators &iterators) : iterators(iterators) {}
 
-                ZipIterator &operator++() noexcept((noexcept(++std::declval<IteratorReference<Iterable>>()) && ...)) {
+                ZipIterator &operator++() noexcept(is_nothrow_incrementible_v<Iterators>) {
                     std::apply([](auto &&...it) { (++it, ...); }, iterators);
                     return *this;
                 }
 
                 template<typename Its>
-                constexpr bool operator==(const ZipIterator<Its> &other) const noexcept(noexcept(this->equal(other))) {
-                    return equal(other);
+                constexpr bool operator==(const ZipIterator<Its> &other) const
+                noexcept(noexcept(this->oneEqual(this->iterators, other.getIterators()))) {
+                    return oneEqual(iterators, other.getIterators());
                 }
 
                 template<typename Its>
@@ -52,7 +103,7 @@ namespace iterators {
                     return !(*this == other);
                 }
 
-                auto operator*() noexcept((noexcept(*std::declval<IteratorReference<Iterable>>()) && ...)) {
+                auto operator*() const noexcept(is_nothrow_dereferencible_v<Iterators>) {
                     return std::apply([](auto &&...it) { return ValueTuple(*it...); }, iterators);
                 }
 
@@ -61,19 +112,18 @@ namespace iterators {
                 }
 
             private:
-                template<typename Its, std::size_t N = 0>
-                [[nodiscard]] constexpr bool equal(const ZipIterator<Its> &other) const noexcept((noexcept(
-                        std::declval<IteratorReference<Iterable>>() ==
-                        std::declval<IteratorReference<Iterable>>()) && ...)) {
-                    if constexpr (N == std::tuple_size_v<Iterators>) {
-                        return false;
-                    } else {
-                        if (std::get<N>(iterators) == std::get<N>(other.getIterators())) {
-                            return true;
-                        } else {
-                            return equal<Its, N + 1>(other);
-                        }
-                    }
+                template<typename Tuple1, typename Tuple2, std::size_t ...Idx>
+                static constexpr bool
+                oneEqualImpl(const Tuple1 &t1, const Tuple2 &t2, std::index_sequence<Idx...>) noexcept((noexcept(
+                        std::get<Idx>(t1) == std::get<Idx>(t2)) && ...)) {
+                    return (... || (std::get<Idx>(t1) == std::get<Idx>(t2)));
+                }
+
+                template<typename Tuple1, typename Tuple2>
+                static constexpr bool oneEqual(const Tuple1 &t1, const Tuple2 &t2)
+                noexcept(noexcept(oneEqualImpl(t1, t2, std::make_index_sequence<std::tuple_size_v<Tuple1>>{}))) {
+                    static_assert(std::tuple_size_v<Tuple1> == std::tuple_size_v<Tuple2>);
+                    return oneEqualImpl(t1, t2, std::make_index_sequence<std::tuple_size_v<Tuple1>>{});
                 }
 
                 Iterators iterators;
