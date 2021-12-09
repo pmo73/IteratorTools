@@ -194,7 +194,7 @@ namespace iterators {
                     : iterators(iterators) {}
 
             template<typename ...Its>
-            explicit constexpr ZipIterator(Its ...its) : iterators(std::make_tuple(its...)) {}
+            explicit constexpr ZipIterator(Its &&...its) : iterators(std::tuple(std::forward<Its>(its)...)) {}
 
             ZipIterator &operator++() noexcept(is_nothrow_incrementible_v<Iterators>) {
                 std::apply([](auto &&...it) { (++it, ...); }, iterators);
