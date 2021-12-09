@@ -22,6 +22,29 @@
         template<typename T> \
         inline constexpr bool NAME##_v = NAME<T>::value;
 
+#define TYPE_MAP_DEFAULT \
+        template<typename> \
+        struct type_to_value {}; \
+        template<std::size_t>    \
+        struct value_to_type {};
+
+#define TYPE_MAP(TYPE, VALUE) \
+        template<>            \
+        struct type_to_value<TYPE> { \
+            static constexpr std::size_t value = VALUE; \
+        };                    \
+        template<>            \
+        struct value_to_type<VALUE>{ \
+            static_assert(VALUE != 0, "0 is a reserved value"); \
+            using type = TYPE;\
+        };
+
+#define TYPE_MAP_ALIAS \
+        template<typename T> \
+        constexpr inline std::size_t type_to_value_v = type_to_value<T>::value; \
+        template<std::size_t V>                                                 \
+        using value_to_type_t = typename value_to_type<V>::type;
+
 namespace iterators {
     namespace impl {
         template<bool Cond, typename T>
@@ -85,10 +108,53 @@ namespace iterators {
 
         NOEXCEPT(*, is_nothrow_dereferencible)
 
+        TYPE_MAP_DEFAULT
+
+        TYPE_MAP(std::input_iterator_tag, 1)
+        TYPE_MAP(std::forward_iterator_tag, 2)
+        TYPE_MAP(std::bidirectional_iterator_tag, 3)
+        TYPE_MAP(std::random_access_iterator_tag, 4)
+
+        TYPE_MAP_ALIAS
+
+        template<typename T, typename = std::void_t<>>
+        struct category_value {
+            static constexpr std::size_t value = 0;
+        };
+
+        template<typename T>
+        struct category_value<T, std::void_t<typename std::iterator_traits<T>::iterator_category>> {
+            static constexpr std::size_t value = type_to_value_v<typename std::iterator_traits<T>::iterator_category>;
+        };
+
+        template<std::size_t Val>
+        struct tuple_iterator_category {
+            using iterator_category = value_to_type_t<Val>;
+        };
+
+        template<>
+        struct tuple_iterator_category<0> {};
+
+        template<typename T>
+        struct minimum_category {};
+
+        template<typename ...Ts>
+        struct minimum_category<std::tuple<Ts...>> {
+            static constexpr std::size_t value = std::min({category_value<Ts>::value...});
+        };
+
+        template<typename T>
+        constexpr inline std::size_t minimum_category_v = minimum_category<T>::value;
+
         template<typename Iterators>
-        class ZipIterator {
+        class ZipIterator : public tuple_iterator_category<minimum_category_v<Iterators>> {
             using ValueTuple = impl::values_t<Iterators>;
         public:
+            using value_type = ValueTuple;
+            using reference = value_type;
+            using pointer = void;
+            using difference_type = std::ptrdiff_t;
+
             explicit constexpr ZipIterator(
                     const Iterators &iterators) noexcept(std::is_nothrow_copy_constructible_v<Iterators>)
                     : iterators(iterators) {}
@@ -185,14 +251,64 @@ namespace iterators {
 
         template<typename T>
         struct CounterIterator {
+            using value_type = T;
+            using reference = T;
+            using pointer = void;
+            using iterator_category = std::random_access_iterator_tag;
+            using difference_type = T;
             static_assert(std::is_integral_v<T> && !std::is_floating_point_v<T>);
 
             explicit constexpr CounterIterator(T begin, T increment = T(1)) noexcept:
                     counter(begin), increment(increment) {}
 
-            CounterIterator &operator++() noexcept {
+            constexpr CounterIterator &operator++() noexcept {
                 counter += increment;
                 return *this;
+            }
+
+            constexpr CounterIterator operator++(int) noexcept {
+                CounterIterator tmp = *this;
+                ++*this;
+                return tmp;
+            }
+
+            constexpr CounterIterator &operator--() noexcept {
+                counter -= increment;
+                return *this;
+            }
+
+            constexpr CounterIterator operator--(int) noexcept {
+                CounterIterator tmp = *this;
+                --*this;
+                return tmp;
+            }
+
+            constexpr CounterIterator &operator+=(difference_type n) noexcept {
+                counter += n * increment;
+                return *this;
+            }
+
+            friend constexpr CounterIterator operator+(difference_type n, CounterIterator it) noexcept {
+                it += n;
+                return it;
+            }
+
+            constexpr CounterIterator &operator-=(difference_type n) noexcept {
+                counter -= n * increment;
+                return *this;
+            }
+
+            friend constexpr CounterIterator operator-(CounterIterator it, difference_type n) noexcept {
+                it -= n;
+                return it;
+            }
+
+            constexpr difference_type operator-(const CounterIterator &other) const noexcept {
+                return (counter - other.counter) / increment;
+            }
+
+            constexpr reference operator[](difference_type n) const noexcept {
+                return counter + n * increment;
             }
 
             constexpr bool operator==(const CounterIterator &other) const noexcept {
@@ -209,6 +325,38 @@ namespace iterators {
 
             constexpr bool operator!=(Unreachable) const noexcept {
                 return true;
+            }
+
+            constexpr bool operator<(const CounterIterator &other) noexcept {
+                return counter < other.counter;
+            }
+
+            constexpr bool operator<=(const CounterIterator &other) noexcept {
+                return counter <= other.counter;
+            }
+
+            constexpr bool operator>(const CounterIterator &other) noexcept {
+                return counter > other.counter;
+            }
+
+            constexpr bool operator>=(const CounterIterator &other) noexcept {
+                return counter >= other.counter;
+            }
+
+            constexpr bool operator<(Unreachable) noexcept {
+                return true;
+            }
+
+            constexpr bool operator<=(Unreachable) noexcept {
+                return true;
+            }
+
+            constexpr bool operator>(Unreachable) noexcept {
+                return false;
+            }
+
+            constexpr bool operator>=(Unreachable) noexcept {
+                return false;
             }
 
             constexpr T operator*() const noexcept {
