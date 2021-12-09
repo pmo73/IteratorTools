@@ -271,3 +271,12 @@ TEST(ZipIterators, bool_vector) {
     std::vector<bool> expected{false, false, true, true};
     EXPECT_TRUE(std::equal(booleans.begin(), booleans.end(), expected.begin()));
 }
+
+TEST(Iterators, type_traits) {
+    using namespace iterators;
+    std::array<int, 1> array;
+    std::list<int> list;
+    auto zipIt = zip(array.begin(), list.begin());
+    constexpr bool correctCategory = std::is_same_v<decltype(zipIt)::iterator_category, std::bidirectional_iterator_tag>;
+    EXPECT_TRUE(correctCategory);
+}
