@@ -106,7 +106,7 @@ namespace iterators {
         using values_t = typename values<T>::type;
 
         NOEXCEPT(++, is_nothrow_incrementible)
-
+        NOEXCEPT(--, is_nothrow_decrementible)
         NOEXCEPT(*, is_nothrow_dereferencible)
 
         TYPE_MAP_DEFAULT
@@ -148,16 +148,6 @@ namespace iterators {
         constexpr inline std::size_t minimum_category_v = minimum_category<T>::value;
 
         template<typename T, typename = std::void_t<>>
-        struct get_difference_type {
-            using type = std::ptrdiff_t;
-        };
-
-        template<typename T>
-        struct get_difference_type<T, std::void_t<typename std::iterator_traits<T>::difference_type>> {
-            using type = typename std::iterator_traits<T>::difference_type;
-        };
-
-        template<typename T, typename = std::void_t<>>
         struct is_random_accessible {
             static constexpr bool value = false;
         };
@@ -165,7 +155,7 @@ namespace iterators {
         template<typename T>
         struct is_random_accessible<T, std::void_t<typename std::iterator_traits<T>::iterator_category>> {
             static constexpr bool value = std::is_base_of_v<std::random_access_iterator_tag,
-                typename std::iterator_traits<T>::iterator_category>;
+                    typename std::iterator_traits<T>::iterator_category>;
         };
 
         template<typename T>
@@ -182,9 +172,24 @@ namespace iterators {
                     typename std::iterator_traits<T>::iterator_category>;
         };
 
+        template<typename ...Ts>
+        struct is_bidirectional<std::tuple<Ts...>, std::void_t<value_to_type_t<minimum_category_v<std::tuple<Ts...>>>>> {
+            static constexpr bool value = std::is_base_of_v<std::bidirectional_iterator_tag,
+                value_to_type_t<minimum_category_v<std::tuple<Ts...>>>>;
+        };
+
         template<typename T>
         constexpr inline bool is_bidirectional_v = is_bidirectional<T>::value;
 
+        template<typename T, typename = std::void_t<>>
+        struct get_difference_type {
+            using type = std::ptrdiff_t;
+        };
+
+        template<typename T>
+        struct get_difference_type<T, std::void_t<typename std::iterator_traits<T>::difference_type>> {
+            using type = typename std::iterator_traits<T>::difference_type;
+        };
 
         template<typename Iterators>
         class ZipIterator : public iterator_category_from_value<minimum_category_v<Iterators>> {
@@ -202,9 +207,28 @@ namespace iterators {
             template<typename ...Its>
             explicit constexpr ZipIterator(Its ...its) : iterators(std::make_tuple(its...)) {}
 
-            ZipIterator &operator++() noexcept(impl::is_nothrow_incrementible_v<Iterators>) {
+            ZipIterator &operator++() noexcept(is_nothrow_incrementible_v<Iterators>) {
                 std::apply([](auto &&...it) { (++it, ...); }, iterators);
                 return *this;
+            }
+
+            ZipIterator operator++(int) noexcept(is_nothrow_incrementible_v<Iterators>) {
+                ZipIterator tmp = *this;
+                std::apply([](auto &&...it) { (++it, ...); }, iterators);
+                return tmp;
+            }
+
+            template<bool B = is_bidirectional_v<Iterators>>
+            auto operator--() noexcept(is_nothrow_decrementible_v<Iterators>) -> std::enable_if_t<B, ZipIterator &> {
+                std::apply([](auto &&...it) { (--it, ...); }, iterators);
+                return *this;
+            }
+
+            template<bool B = is_bidirectional_v<Iterators>>
+            auto operator--(int) noexcept(is_nothrow_decrementible_v<Iterators>) -> std::enable_if_t<B, ZipIterator> {
+                ZipIterator tmp = *this;
+                std::apply([](auto &&...it) { (--it, ...); }, iterators);
+                return tmp;
             }
 
             template<typename Its>
@@ -326,6 +350,11 @@ namespace iterators {
             constexpr CounterIterator &operator+=(difference_type n) noexcept {
                 counter += n * increment;
                 return *this;
+            }
+
+            friend constexpr CounterIterator operator+(CounterIterator it, difference_type n) noexcept {
+                it += n;
+                return it;
             }
 
             friend constexpr CounterIterator operator+(difference_type n, CounterIterator it) noexcept {

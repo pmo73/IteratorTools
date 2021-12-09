@@ -3,6 +3,7 @@
 #include <list>
 #include <string>
 #include <type_traits>
+#include <unordered_map>
 #include "Iterators.hpp"
 #include "utils.hpp"
 
@@ -276,7 +277,11 @@ TEST(Iterators, type_traits) {
     using namespace iterators;
     std::array<int, 1> array;
     std::list<int> list;
+    std::unordered_map<int, int> map;
     auto zipIt = zip(array.begin(), list.begin());
     constexpr bool correctCategory = std::is_same_v<decltype(zipIt)::iterator_category, std::bidirectional_iterator_tag>;
     EXPECT_TRUE(correctCategory);
+    auto zipIt1 = zip(array.begin(), map.begin());
+    constexpr bool correctCategory1 = std::is_same_v<decltype(zipIt1)::iterator_category, std::forward_iterator_tag>;
+    EXPECT_TRUE(correctCategory1);
 }
