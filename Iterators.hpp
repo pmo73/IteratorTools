@@ -25,6 +25,24 @@
 
 namespace iterators {
     namespace impl {
+        template<typename T>
+        struct is_bidirectional {
+            static constexpr bool value = false;
+        };
+
+        template<>
+        struct is_bidirectional<std::bidirectional_iterator_tag> {
+            static constexpr bool value = true;
+        };
+
+        template<>
+        struct is_bidirectional<std::random_access_iterator_tag> {
+            static constexpr bool value = true;
+        };
+
+        template<typename T>
+        constexpr inline bool is_bidirectional_v = is_bidirectional<T>::value;
+
         template<bool Cond, typename T>
         using reference_if_t = std::conditional_t<Cond, std::add_lvalue_reference_t<T>, T>;
 
@@ -261,6 +279,103 @@ namespace iterators {
                 return *this;
             }
 
+            TransformIterator operator++(int) noexcept(noexcept(this->it++)) {
+                TransformIterator tmp = *this;
+                ++(*this);
+                return tmp;
+            }
+
+            template<bool Bidir = is_bidirectional_v<iterator_category>>
+            auto operator--() noexcept(noexcept(--this->it)) -> std::enable_if_t<Bidir, TransformIterator &> {
+                --it;
+                return *this;
+            }
+
+            template<bool Bidir = is_bidirectional_v<iterator_category>>
+            auto operator--(int) noexcept(noexcept(this->it--)) -> std::enable_if_t<Bidir, TransformIterator> {
+                TransformIterator tmp = *this;
+                --(*this);
+                return tmp;
+            }
+
+            template<bool RA = std::is_same_v<iterator_category, std::random_access_iterator_tag>>
+            constexpr auto operator+=(
+                    difference_type n) noexcept(noexcept(this->it += n)) -> std::enable_if_t<RA, TransformIterator &> {
+                it += n;
+                return *this;
+            }
+
+            template<bool RA = std::is_same_v<iterator_category, std::random_access_iterator_tag>>
+            constexpr auto operator-=(
+                    difference_type n) noexcept(noexcept(this->it -= n)) -> std::enable_if_t<RA, TransformIterator &> {
+                it -= n;
+                return *this;
+            }
+
+            template<bool RA = std::is_same_v<iterator_category, std::random_access_iterator_tag>>
+            friend constexpr auto operator+(TransformIterator iter, difference_type n) noexcept(noexcept(iter += n))
+                -> std::enable_if_t<RA, TransformIterator> {
+                iter += n;
+                return iter;
+            }
+
+            template<bool RA = std::is_same_v<iterator_category, std::random_access_iterator_tag>>
+            friend constexpr auto operator-(TransformIterator iter, difference_type n) noexcept(noexcept(iter -= n))
+                -> std::enable_if_t<RA, TransformIterator> {
+                iter -= n;
+                return iter;
+            }
+
+            template<bool RA = std::is_same_v<iterator_category, std::random_access_iterator_tag>>
+            friend constexpr auto operator+(difference_type n, TransformIterator iter) noexcept(noexcept(iter += n))
+                -> std::enable_if_t<RA, TransformIterator> {
+                iter += n;
+                return iter;
+            }
+
+            template<bool RA = std::is_same_v<iterator_category, std::random_access_iterator_tag>>
+            friend constexpr auto operator-(difference_type n, TransformIterator iter) noexcept(noexcept(iter -= n))
+                -> std::enable_if_t<RA, TransformIterator> {
+                iter -= n;
+                return iter;
+            }
+
+            template<bool RA = std::is_same_v<iterator_category, std::random_access_iterator_tag>>
+            constexpr auto operator-(const TransformIterator &other) const noexcept(noexcept(this->it - other.it))
+                -> std::enable_if_t<RA, difference_type> {
+                return it - other.it;
+            }
+
+            template<bool RA = std::is_same_v<iterator_category, std::random_access_iterator_tag>>
+            constexpr auto operator[](difference_type n) const noexcept(noexcept(*(*this + n)))
+                -> std::enable_if_t<RA, reference> {
+                return *(*this + n);
+            }
+
+            template<bool RA = std::is_same_v<iterator_category, std::random_access_iterator_tag>>
+            constexpr auto operator<(const TransformIterator &other) const noexcept(noexcept(this->it < other.it))
+                -> std::enable_if_t<RA, bool> {
+                return it < other.it;
+            }
+
+            template<bool RA = std::is_same_v<iterator_category, std::random_access_iterator_tag>>
+            constexpr auto operator>(const TransformIterator &other) const noexcept(noexcept(this->it > other.it))
+                -> std::enable_if_t<RA, bool> {
+                return it > other.it;
+            }
+
+            template<bool RA = std::is_same_v<iterator_category, std::random_access_iterator_tag>>
+            constexpr auto operator<=(const TransformIterator &other) const noexcept(noexcept(this->it <= other.it))
+                -> std::enable_if_t<RA, bool> {
+                return it <= other.it;
+            }
+
+            template<bool RA = std::is_same_v<iterator_category, std::random_access_iterator_tag>>
+            constexpr auto operator>=(const TransformIterator &other) const noexcept(noexcept(this->it >= other.it))
+                -> std::enable_if_t<RA, bool> {
+                return it >= other.it;
+            }
+
             bool operator==(const TransformIterator &other) const noexcept(noexcept(this->it == this->it)) {
                 return it == other.it;
             }
@@ -286,6 +401,7 @@ namespace iterators {
         template<typename Container, typename Function>
         struct TransformContainer {
             using ContainerType = std::remove_reference_t<Container>;
+            using Ftype = std::remove_reference_t<Function>;
             using It = decltype(std::begin(std::declval<std::add_lvalue_reference_t<ContainerType>>()));
             using ConstIt = decltype(std::begin(
                     std::declval<std::add_lvalue_reference_t<std::add_const_t<ContainerType>>>()));
@@ -297,23 +413,23 @@ namespace iterators {
             TransformContainer(T &&init, Function &&func) : container(std::forward<T>(init)),
                                                             f(std::forward<Function>(func)) {}
 
-            auto begin() const noexcept(std::is_nothrow_constructible_v<TransformIterator<ConstIt, Function>,
+            auto begin() const noexcept(std::is_nothrow_constructible_v<TransformIterator<ConstIt, Ftype>,
                     ConstIt, Function>) {
-                return TransformIterator<ConstIt, Function>(std::begin(container), f);
+                return TransformIterator<ConstIt, Ftype>(std::begin(container), f);
             }
 
-            auto end() const noexcept(std::is_nothrow_constructible_v<TransformIterator<ConstSentinel, Function>,
+            auto end() const noexcept(std::is_nothrow_constructible_v<TransformIterator<ConstSentinel, Ftype>,
                     ConstSentinel, Function>) {
-                return TransformIterator<ConstSentinel, Function>(std::end(container), f);
+                return TransformIterator<ConstSentinel, Ftype>(std::end(container), f);
             }
 
-            auto begin() noexcept(std::is_nothrow_constructible_v<TransformIterator<It, Function>, It, Function>) {
-                return TransformIterator<It, Function>(std::begin(container), f);
+            auto begin() noexcept(std::is_nothrow_constructible_v<TransformIterator<It, Ftype>, It, Function>) {
+                return TransformIterator<It, Ftype>(std::begin(container), f);
             }
 
-            auto end() noexcept(std::is_nothrow_constructible_v<TransformIterator<Sentinel, Function>,
+            auto end() noexcept(std::is_nothrow_constructible_v<TransformIterator<Sentinel, Ftype>,
                     Sentinel, Function>) {
-                return TransformIterator<Sentinel, Function>(std::end(container), f);
+                return TransformIterator<Sentinel, Ftype>(std::end(container), f);
             }
         private:
             Container container;

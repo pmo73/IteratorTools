@@ -5,6 +5,7 @@
 #include <type_traits>
 #include <unordered_map>
 #include <map>
+#include <list>
 #include "Iterators.hpp"
 #include "utils.hpp"
 
@@ -18,7 +19,7 @@ TEST(TransformIterators, transform_results) {
         return num * num;
     };
 
-    for (auto [squared, expected] : const_zip(transform(numbers, square), results)) {
+    for (auto[squared, expected]: const_zip(transform(numbers, square), results)) {
         EXPECT_EQ(squared, expected);
     }
 }
@@ -32,7 +33,7 @@ TEST(TransformIterators, reference_result) {
     };
 
     EXPECT_TRUE(std::is_lvalue_reference_v<decltype(*transform(map, values).begin())>);
-    for (auto &string : transform(map, values)) {
+    for (auto &string: transform(map, values)) {
         string += "a";
     }
 
@@ -87,14 +88,15 @@ TEST(TransformIterators, elements_no_copy) {
     auto getString = [](auto &a) -> auto & {
         return a.s;
     };
-    for (auto &item : transform(items, getString)) {
+    for (auto &item: transform(items, getString)) {
         item += std::to_string(1);
     }
 
-    for (auto &item : transform(std::move(items), getString)) {
+    for (auto &item: transform(std::move(items), getString)) {
         item += std::to_string(2);
     }
 }
+
 TEST(TransformIterators, container_no_copy) {
     using iterators::transform;
     using iterators::const_zip;
@@ -103,12 +105,12 @@ TEST(TransformIterators, container_no_copy) {
         return a.first;
     };
 
-    for (auto &string : transform(strings, getString)) {
+    for (auto &string: transform(strings, getString)) {
         string += "x";
     }
 
     std::vector<std::string> results{"ax", "bx", "cx"};
-    for (auto [string, result] : const_zip(transform(std::move(strings), getString), results)) {
+    for (auto[string, result]: const_zip(transform(std::move(strings), getString), results)) {
         EXPECT_EQ(string, result);
     }
 }
@@ -118,7 +120,7 @@ TEST(TransformIterators, temporary_lifetime) {
     using iterators::const_zip;
     std::array expected_values{1, 2, 3};
     bool allowToDie = false;
-    auto identity = [](auto a) {return a;};
+    auto identity = [](auto a) { return a; };
     for (auto[expected, actual]: const_zip(expected_values,
                                            transform(LifeTimeChecker<int>({1, 2, 3}, allowToDie), identity))) {
         EXPECT_EQ(expected, actual);
@@ -126,4 +128,68 @@ TEST(TransformIterators, temporary_lifetime) {
             allowToDie = true;
         }
     }
+}
+
+TEST(TransformIterators, iterator_traits_and_operators) {
+    using iterators::transform;
+    std::array numbers{1, 2, 3};
+    auto identity = [](auto &x) -> auto & { return x; };
+    const auto iterator = transform(numbers.begin(), identity);
+    const auto end = transform(numbers.end(), identity);
+    constexpr bool correctType = std::is_same_v<decltype(iterator)::iterator_category, std::random_access_iterator_tag>;
+    constexpr bool correctValue = std::is_same_v<decltype(iterator)::value_type, int>;
+    constexpr bool correctRef = std::is_same_v<decltype(iterator)::reference, int &>;
+    constexpr bool correctPointer = std::is_same_v<decltype(iterator)::pointer, int *>;
+    constexpr bool correctDiffType = std::is_same_v<decltype(iterator)::difference_type,
+        std::iterator_traits<decltype(numbers.begin())>::difference_type>;
+    EXPECT_TRUE(correctType);
+    EXPECT_TRUE(correctValue);
+    EXPECT_TRUE(correctRef);
+    EXPECT_TRUE(correctPointer);
+    EXPECT_TRUE(correctDiffType);
+    EXPECT_EQ(iterator + 3, end);
+    EXPECT_EQ(3 + iterator, end);
+    EXPECT_EQ(end - iterator, numbers.size());
+    EXPECT_TRUE(iterator < end);
+    EXPECT_TRUE(end > iterator);
+    EXPECT_TRUE(iterator <= end);
+    EXPECT_TRUE(end >= iterator);
+    iterator[1] *= 2;
+    EXPECT_EQ(iterator[1], 4);
+    auto incremented = iterator + 1;
+    EXPECT_NE(iterator, incremented--);
+    ++incremented;
+    EXPECT_EQ(iterator, --incremented);
+}
+
+TEST(TransformIterators, iterator_traits_and_operators_1) {
+    using iterators::transform;
+    std::list numbers{4, 2, 3};
+    std::unordered_map<int, std::string> map{{1, "1"}, {2, "2"}, {3, "3"}};
+    auto square = [](auto x) { return x * x; };
+    auto value = [](const auto &pair) { return pair.second; };
+    auto mapIterator = transform(map.begin(), value);
+    auto listIterator = transform(std::next(numbers.begin()), square);
+    constexpr bool correctPointerMap = std::is_void_v<decltype(mapIterator)::pointer>;
+    constexpr bool correctTypeMap = std::is_same_v<decltype(mapIterator)::iterator_category, std::forward_iterator_tag>;
+    EXPECT_TRUE(correctPointerMap);
+    EXPECT_TRUE(correctTypeMap);
+    constexpr bool correctPointerList = std::is_void_v<decltype(listIterator)::pointer>;
+    constexpr bool correctTypeList = std::is_same_v<decltype(listIterator)::iterator_category,
+        std::bidirectional_iterator_tag>;
+    EXPECT_TRUE(correctPointerList);
+    EXPECT_TRUE(correctTypeList);
+    --listIterator;
+    EXPECT_EQ(*listIterator, 16);
+}
+
+TEST(TransformIterators, stl_algos) {
+    using iterators::transform;
+    std::vector<std::pair<int, std::string>> unordered{{1, "3"}, {2, "1"}, {3, "7"}};
+    std::vector<std::string> dest;
+    std::vector<std::string> expectedValues = {"3", "1", "7"};
+    auto value = [](auto &pair) -> auto & { return pair.second; };
+    auto valueView = transform(unordered, value);
+    std::copy(valueView.begin(), valueView.end(), std::back_inserter(dest));
+    EXPECT_EQ(dest, expectedValues);
 }
