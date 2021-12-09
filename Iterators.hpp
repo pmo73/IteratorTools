@@ -482,13 +482,6 @@ namespace iterators {
             }
 
             template<bool RA = std::is_same_v<iterator_category, std::random_access_iterator_tag>>
-            friend constexpr auto operator-(difference_type n, TransformIterator iter) noexcept(noexcept(iter -= n))
-                -> std::enable_if_t<RA, TransformIterator> {
-                iter -= n;
-                return iter;
-            }
-
-            template<bool RA = std::is_same_v<iterator_category, std::random_access_iterator_tag>>
             constexpr auto operator-(const TransformIterator &other) const noexcept(noexcept(this->it - other.it))
                 -> std::enable_if_t<RA, difference_type> {
                 return it - other.it;
