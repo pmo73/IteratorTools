@@ -48,24 +48,6 @@
 
 namespace iterators {
     namespace impl {
-        template<typename T>
-        struct is_bidirectional {
-            static constexpr bool value = false;
-        };
-
-        template<>
-        struct is_bidirectional<std::bidirectional_iterator_tag> {
-            static constexpr bool value = true;
-        };
-
-        template<>
-        struct is_bidirectional<std::random_access_iterator_tag> {
-            static constexpr bool value = true;
-        };
-
-        template<typename T>
-        constexpr inline bool is_bidirectional_v = is_bidirectional<T>::value;
-
         template<bool Cond, typename T>
         using reference_if_t = std::conditional_t<Cond, std::add_lvalue_reference_t<T>, T>;
 
@@ -164,6 +146,45 @@ namespace iterators {
 
         template<typename T>
         constexpr inline std::size_t minimum_category_v = minimum_category<T>::value;
+
+        template<typename T, typename = std::void_t<>>
+        struct get_difference_type {
+            using type = std::ptrdiff_t;
+        };
+
+        template<typename T>
+        struct get_difference_type<T, std::void_t<typename std::iterator_traits<T>::difference_type>> {
+            using type = typename std::iterator_traits<T>::difference_type;
+        };
+
+        template<typename T, typename = std::void_t<>>
+        struct is_random_accessible {
+            static constexpr bool value = false;
+        };
+
+        template<typename T>
+        struct is_random_accessible<T, std::void_t<typename std::iterator_traits<T>::iterator_category>> {
+            static constexpr bool value = std::is_base_of_v<std::random_access_iterator_tag,
+                typename std::iterator_traits<T>::iterator_category>;
+        };
+
+        template<typename T>
+        constexpr inline bool is_random_accessible_v = is_random_accessible<T>::value;
+
+        template<typename T, typename = std::void_t<>>
+        struct is_bidirectional {
+            static constexpr bool value = false;
+        };
+
+        template<typename T>
+        struct is_bidirectional<T, std::void_t<typename std::iterator_traits<T>::iterator_category>> {
+            static constexpr bool value = std::is_base_of_v<std::bidirectional_iterator_tag,
+                    typename std::iterator_traits<T>::iterator_category>;
+        };
+
+        template<typename T>
+        constexpr inline bool is_bidirectional_v = is_bidirectional<T>::value;
+
 
         template<typename Iterators>
         class ZipIterator : public tuple_iterator_category<minimum_category_v<Iterators>> {
@@ -405,7 +426,7 @@ namespace iterators {
         };
 
         template<typename Iterator, typename Function>
-        class TransformIterator {
+        class TransformIterator : public tuple_iterator_category<category_value<Iterator>::value>{
             static_assert(std::is_copy_constructible_v<Function>, "Function object must be copyable");
             using Element = dereference_t<Iterator>;
             static_assert(std::is_invocable_v<Function, Element>,
@@ -415,8 +436,7 @@ namespace iterators {
             using value_type = std::remove_cv_t<std::remove_reference_t<reference>>;
             using pointer = std::conditional_t<std::is_lvalue_reference_v<reference>,
                     std::add_pointer_t<std::remove_reference_t<reference>>, void>;
-            using difference_type = typename std::iterator_traits<Iterator>::difference_type;
-            using iterator_category = typename std::iterator_traits<Iterator>::iterator_category;
+            using difference_type = typename get_difference_type<Iterator>::type;
 
             TransformIterator(const Iterator &iterator, const Function &func) noexcept(
             std::is_nothrow_copy_constructible_v<Iterator> && std::is_nothrow_copy_constructible_v<Function>): it(
@@ -433,85 +453,85 @@ namespace iterators {
                 return tmp;
             }
 
-            template<bool Bidir = is_bidirectional_v<iterator_category>>
-            auto operator--() noexcept(noexcept(--this->it)) -> std::enable_if_t<Bidir, TransformIterator &> {
+            template<bool B = is_bidirectional_v<Iterator>>
+            auto operator--() noexcept(noexcept(--this->it)) -> std::enable_if_t<B, TransformIterator &> {
                 --it;
                 return *this;
             }
 
-            template<bool Bidir = is_bidirectional_v<iterator_category>>
-            auto operator--(int) noexcept(noexcept(this->it--)) -> std::enable_if_t<Bidir, TransformIterator> {
+            template<bool B = is_bidirectional_v<Iterator>>
+            auto operator--(int) noexcept(noexcept(this->it--)) -> std::enable_if_t<B, TransformIterator> {
                 TransformIterator tmp = *this;
                 --(*this);
                 return tmp;
             }
 
-            template<bool RA = std::is_same_v<iterator_category, std::random_access_iterator_tag>>
+            template<bool RA = is_random_accessible_v<Iterator>>
             constexpr auto operator+=(
                     difference_type n) noexcept(noexcept(this->it += n)) -> std::enable_if_t<RA, TransformIterator &> {
                 it += n;
                 return *this;
             }
 
-            template<bool RA = std::is_same_v<iterator_category, std::random_access_iterator_tag>>
+            template<bool RA = is_random_accessible_v<Iterator>>
             constexpr auto operator-=(
                     difference_type n) noexcept(noexcept(this->it -= n)) -> std::enable_if_t<RA, TransformIterator &> {
                 it -= n;
                 return *this;
             }
 
-            template<bool RA = std::is_same_v<iterator_category, std::random_access_iterator_tag>>
+            template<bool RA = is_random_accessible_v<Iterator>>
             friend constexpr auto operator+(TransformIterator iter, difference_type n) noexcept(noexcept(iter += n))
                 -> std::enable_if_t<RA, TransformIterator> {
                 iter += n;
                 return iter;
             }
 
-            template<bool RA = std::is_same_v<iterator_category, std::random_access_iterator_tag>>
+            template<bool RA = is_random_accessible_v<Iterator>>
             friend constexpr auto operator-(TransformIterator iter, difference_type n) noexcept(noexcept(iter -= n))
                 -> std::enable_if_t<RA, TransformIterator> {
                 iter -= n;
                 return iter;
             }
 
-            template<bool RA = std::is_same_v<iterator_category, std::random_access_iterator_tag>>
+            template<bool RA = is_random_accessible_v<Iterator>>
             friend constexpr auto operator+(difference_type n, TransformIterator iter) noexcept(noexcept(iter += n))
                 -> std::enable_if_t<RA, TransformIterator> {
                 iter += n;
                 return iter;
             }
 
-            template<bool RA = std::is_same_v<iterator_category, std::random_access_iterator_tag>>
+            template<bool RA = is_random_accessible_v<Iterator>>
             constexpr auto operator-(const TransformIterator &other) const noexcept(noexcept(this->it - other.it))
                 -> std::enable_if_t<RA, difference_type> {
                 return it - other.it;
             }
 
-            template<bool RA = std::is_same_v<iterator_category, std::random_access_iterator_tag>>
+            template<bool RA = is_random_accessible_v<Iterator>>
             constexpr auto operator[](difference_type n) const noexcept(noexcept(*(*this + n)))
                 -> std::enable_if_t<RA, reference> {
                 return *(*this + n);
             }
 
-            template<bool RA = std::is_same_v<iterator_category, std::random_access_iterator_tag>>
+            template<bool RA = is_random_accessible_v<Iterator>>
             constexpr auto operator<(const TransformIterator &other) const noexcept(noexcept(this->it < other.it))
                 -> std::enable_if_t<RA, bool> {
                 return it < other.it;
             }
 
-            template<bool RA = std::is_same_v<iterator_category, std::random_access_iterator_tag>>
+            template<bool RA = is_random_accessible_v<Iterator>>
             constexpr auto operator>(const TransformIterator &other) const noexcept(noexcept(this->it > other.it))
                 -> std::enable_if_t<RA, bool> {
                 return it > other.it;
             }
 
-            template<bool RA = std::is_same_v<iterator_category, std::random_access_iterator_tag>>
+            template<bool RA = is_random_accessible_v<Iterator>>
             constexpr auto operator<=(const TransformIterator &other) const noexcept(noexcept(this->it <= other.it))
                 -> std::enable_if_t<RA, bool> {
                 return it <= other.it;
             }
 
-            template<bool RA = std::is_same_v<iterator_category, std::random_access_iterator_tag>>
+            template<bool RA = is_random_accessible_v<Iterator>>
             constexpr auto operator>=(const TransformIterator &other) const noexcept(noexcept(this->it >= other.it))
                 -> std::enable_if_t<RA, bool> {
                 return it >= other.it;
