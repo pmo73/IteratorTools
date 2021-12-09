@@ -119,29 +119,29 @@ namespace iterators {
         TYPE_MAP_ALIAS
 
         template<typename T, typename = std::void_t<>>
-        struct category_value {
+        struct iterator_category_value {
             static constexpr std::size_t value = 0;
         };
 
         template<typename T>
-        struct category_value<T, std::void_t<typename std::iterator_traits<T>::iterator_category>> {
+        struct iterator_category_value<T, std::void_t<typename std::iterator_traits<T>::iterator_category>> {
             static constexpr std::size_t value = type_to_value_v<typename std::iterator_traits<T>::iterator_category>;
         };
 
         template<std::size_t Val>
-        struct tuple_iterator_category {
+        struct iterator_category_from_value {
             using iterator_category = value_to_type_t<Val>;
         };
 
         template<>
-        struct tuple_iterator_category<0> {};
+        struct iterator_category_from_value<0> {};
 
         template<typename T>
         struct minimum_category {};
 
         template<typename ...Ts>
         struct minimum_category<std::tuple<Ts...>> {
-            static constexpr std::size_t value = std::min({category_value<Ts>::value...});
+            static constexpr std::size_t value = std::min({iterator_category_value<Ts>::value...});
         };
 
         template<typename T>
@@ -187,7 +187,7 @@ namespace iterators {
 
 
         template<typename Iterators>
-        class ZipIterator : public tuple_iterator_category<minimum_category_v<Iterators>> {
+        class ZipIterator : public iterator_category_from_value<minimum_category_v<Iterators>> {
             using ValueTuple = impl::values_t<Iterators>;
         public:
             using value_type = ValueTuple;
