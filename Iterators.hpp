@@ -426,7 +426,7 @@ namespace iterators {
         };
 
         template<typename Iterator, typename Function>
-        class TransformIterator : public tuple_iterator_category<category_value<Iterator>::value>{
+        class TransformIterator : public iterator_category_from_value<iterator_category_value<Iterator>::value>{
             static_assert(std::is_copy_constructible_v<Function>, "Function object must be copyable");
             using Element = dereference_t<Iterator>;
             static_assert(std::is_invocable_v<Function, Element>,
