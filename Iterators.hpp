@@ -10,17 +10,34 @@
 
 #include <tuple>
 
-#define NOEXCEPT(OP, NAME) \
+#define REFERENCE(TYPE) std::declval<std::add_lvalue_reference_t<TYPE>>()
+
+#define ALL_NOEXCEPT(OP, NAME) \
         template<typename T> \
         struct NAME { \
             static constexpr bool value = false; \
         }; \
         template<typename ...Ts> \
         struct NAME <std::tuple<Ts...>> { \
-            static constexpr bool value = (... && noexcept(OP std::declval<std::add_lvalue_reference_t<Ts>>())); \
+            static constexpr bool value = (... && noexcept(OP)); \
         };                 \
         template<typename T> \
         inline constexpr bool NAME##_v = NAME<T>::value;
+
+#define ELEM std::get<Idx>(tuple)
+
+#define TUPLE_FOR_EACH(OPERATION, COMBINATOR, NAME) \
+        template<typename Tuple, std::size_t ...Idx> \
+        static constexpr auto NAME##Impl(Tuple &tuple, std::index_sequence<Idx...>) \
+        noexcept() { \
+            return (OPERATIRON COMBINATOR ...); \
+        } \
+        template<typename Tuple> \
+        static constexpr auto NAME(Tuple &tuple) \
+        noexcept(noexcept(tupleForEachImpl(tuple, std::make_index_sequence<std::tuple_size_v<Tuple>>{}))) { \
+            return NAME##Impl(tuple, std::make_index_sequence<std::tuple_size_v<Tuple>>{}); \
+        }
+
 
 #define TYPE_MAP_DEFAULT \
         template<typename> \
@@ -104,9 +121,11 @@ namespace iterators {
         template<typename T>
         using values_t = typename values<T>::type;
 
-        NOEXCEPT(++, is_nothrow_incrementible)
-        NOEXCEPT(--, is_nothrow_decrementible)
-        NOEXCEPT(*, is_nothrow_dereferencible)
+        ALL_NOEXCEPT(++REFERENCE(Ts), is_nothrow_incrementible)
+        ALL_NOEXCEPT(--REFERENCE(Ts), is_nothrow_decrementible)
+        ALL_NOEXCEPT(*REFERENCE(Ts), is_nothrow_dereferencible)
+        ALL_NOEXCEPT(REFERENCE(Ts) += 5, is_nothrow_compound_assignable_plus)
+        ALL_NOEXCEPT(REFERENCE(Ts) -= 5, is_nothrow_compound_assignable_minus)
 
         TYPE_MAP_DEFAULT
 
@@ -157,6 +176,12 @@ namespace iterators {
                     typename std::iterator_traits<T>::iterator_category>;
         };
 
+        template<typename ...Ts>
+        struct is_random_accessible<std::tuple<Ts...>, std::void_t<value_to_type_t<minimum_category_v<std::tuple<Ts...>>>>> {
+            static constexpr bool value = std::is_base_of_v<std::random_access_iterator_tag,
+                    value_to_type_t<minimum_category_v<std::tuple<Ts...>>>>;
+        };
+
         template<typename T>
         constexpr inline bool is_random_accessible_v = is_random_accessible<T>::value;
 
@@ -196,29 +221,82 @@ namespace iterators {
             template<typename ...Its>
             explicit constexpr ZipIterator(Its &&...its) : iterators(std::tuple(std::forward<Its>(its)...)) {}
 
-            ZipIterator &operator++() noexcept(is_nothrow_incrementible_v<Iterators>) {
+            constexpr ZipIterator &operator++() noexcept(is_nothrow_incrementible_v<Iterators>) {
                 std::apply([](auto &&...it) { (++it, ...); }, iterators);
                 return *this;
             }
 
-            ZipIterator operator++(int) noexcept(is_nothrow_incrementible_v<Iterators>) {
+            constexpr ZipIterator operator++(int) noexcept(is_nothrow_incrementible_v<Iterators>) {
                 ZipIterator tmp = *this;
                 std::apply([](auto &&...it) { (++it, ...); }, iterators);
                 return tmp;
             }
 
             template<bool B = is_bidirectional_v<Iterators>>
-            auto operator--() noexcept(is_nothrow_decrementible_v<Iterators>) -> std::enable_if_t<B, ZipIterator &> {
+            constexpr auto operator--() noexcept(is_nothrow_decrementible_v<Iterators>)
+                -> std::enable_if_t<B, ZipIterator &> {
                 std::apply([](auto &&...it) { (--it, ...); }, iterators);
                 return *this;
             }
 
             template<bool B = is_bidirectional_v<Iterators>>
-            auto operator--(int) noexcept(is_nothrow_decrementible_v<Iterators>) -> std::enable_if_t<B, ZipIterator> {
+            constexpr auto operator--(int) noexcept(is_nothrow_decrementible_v<Iterators>)
+                -> std::enable_if_t<B, ZipIterator> {
                 ZipIterator tmp = *this;
                 std::apply([](auto &&...it) { (--it, ...); }, iterators);
                 return tmp;
             }
+
+            template<bool B = is_random_accessible_v<Iterators>>
+            constexpr auto operator+=(difference_type n) noexcept(is_nothrow_compound_assignable_plus_v<Iterators>)
+                    -> std::enable_if_t<B, ZipIterator &> {
+                tupleForEach(iterators, [n](auto &it) constexpr noexcept(noexcept(it += n)) {it += n;});
+                return *this;
+            }
+
+            template<bool B = is_random_accessible_v<Iterators>>
+            constexpr auto operator-=(difference_type n) noexcept(is_nothrow_compound_assignable_minus_v<Iterators>)
+                    -> std::enable_if_t<B, ZipIterator &> {
+                tupleForEach(iterators, [n](auto &it) constexpr noexcept(noexcept(it -= n)) {it -= n;});
+                return *this;
+            }
+
+            template<bool B = is_random_accessible_v<Iterators>>
+            friend constexpr auto operator+(ZipIterator it, difference_type n)
+                noexcept(is_nothrow_compound_assignable_plus_v<Iterators>) -> std::enable_if_t<B, ZipIterator> {
+                it += n;
+                return it;
+            }
+
+            template<bool B = is_random_accessible_v<Iterators>>
+            friend constexpr auto operator+(difference_type n, ZipIterator it)
+                noexcept(is_nothrow_compound_assignable_plus_v<Iterators>) -> std::enable_if_t<B, ZipIterator> {
+                it += n;
+                return it;
+            }
+
+            template<bool B = is_random_accessible_v<Iterators>>
+            friend constexpr auto operator-(ZipIterator it, difference_type n)
+            noexcept(is_nothrow_compound_assignable_minus_v<Iterators>) -> std::enable_if_t<B, ZipIterator> {
+                it -= n;
+                return it;
+            }
+
+            template<bool B = is_random_accessible_v<Iterators>>
+            constexpr auto operator-(const ZipIterator &other) const
+                noexcept(noexcept(std::get<0>(this->iterators) - std::get<0>(other.iterators))) -> std::enable_if_t<B, difference_type> {
+                return std::get<0>(iterators) - std::get<0>(other.iterators);
+            }
+
+            template<bool B = is_random_accessible_v<Iterators>>
+            constexpr auto operator[](difference_type n) const noexcept(noexcept(*(*this + n)))
+                -> std::enable_if_t<B, reference> {
+                return *(*this + n);
+            }
+
+            /*template<bool B = is_random_accessible_v<Iterators>>
+            constexpr auto operator<(const ZipIterator &other) const noexcept() -> std::enable_if_t<B, bool> {
+            }*/
 
             template<typename Its>
             constexpr bool operator==(const ZipIterator<Its> &other) const
@@ -252,6 +330,18 @@ namespace iterators {
             noexcept(noexcept(oneEqualImpl(t1, t2, std::make_index_sequence<std::tuple_size_v<Tuple1>>{}))) {
                 static_assert(std::tuple_size_v<Tuple1> == std::tuple_size_v<Tuple2>);
                 return oneEqualImpl(t1, t2, std::make_index_sequence<std::tuple_size_v<Tuple1>>{});
+            }
+
+            template<typename Tuple, typename Fun, std::size_t ...Idx>
+            static constexpr auto tupleForEachImpl(Tuple &tuple, const Fun &f, std::index_sequence<Idx...>)
+                noexcept((std::is_nothrow_invocable_v<Fun, decltype(std::get<Idx>(tuple))> && ...)) {
+                return (f(std::get<Idx>(tuple)), ...);
+            }
+
+            template<typename Fun, typename Tuple>
+            static constexpr auto tupleForEach(Tuple &tuple, const Fun &f)
+                noexcept(noexcept(tupleForEachImpl(tuple, f, std::make_index_sequence<std::tuple_size_v<Tuple>>{}))) {
+                return tupleForEachImpl(tuple, f, std::make_index_sequence<std::tuple_size_v<Tuple>>{});
             }
 
             Iterators iterators;
