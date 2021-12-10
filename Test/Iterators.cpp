@@ -319,3 +319,13 @@ TEST(Iterators, random_access_operators) {
     EXPECT_FALSE(zBegin + 3 > zEnd);
     EXPECT_EQ(zEnd - zBegin, 3);
 }
+
+TEST(Iterators, stl_algos) {
+    using namespace iterators;
+    std::array numbers{4, 2, 3, 1, 0};
+    auto zBegin = zip(numbers.begin(), numbers.rbegin());
+    auto zEnd = zip(numbers.end(), numbers.rend());
+    auto res = std::find_if(zBegin, zEnd, [](const auto &tuple) { return std::get<0>(tuple) == std::get<1>(tuple); });
+    ASSERT_NE(res, zEnd);
+    EXPECT_EQ(std::get<0>(*res), 3);
+}
