@@ -285,3 +285,47 @@ TEST(Iterators, type_traits) {
     constexpr bool correctCategory1 = std::is_same_v<decltype(zipIt1)::iterator_category, std::forward_iterator_tag>;
     EXPECT_TRUE(correctCategory1);
 }
+
+TEST(Iterators, bidirectional_operators) {
+    using namespace iterators;
+    std::array numbers{1, 2, 3, 4};
+    std::list<std::string> strings{"a", "b", "c"};
+    auto zIt = zip(numbers.begin(), strings.begin());
+    zIt++;
+    auto [n, s] =*zIt;
+    EXPECT_EQ(n, 2);
+    EXPECT_EQ(s, "b");
+    ++zIt;
+    auto [n1, s1] = *--zIt;
+    EXPECT_EQ(n1, n);
+    EXPECT_EQ(s1, s);
+}
+TEST(Iterators, random_access_operators) {
+    using namespace iterators;
+    std::array numbers{1, 2, 3, 4};
+    std::vector<std::string> strings{"a", "b", "c"};
+    const auto zBegin = zip(numbers.begin(), strings.begin());
+    const auto zEnd = zip(numbers.end(), strings.end());
+    EXPECT_EQ(*(zBegin + 2), zBegin[2]);
+    EXPECT_LT(zBegin, zEnd);
+    auto tmp = zBegin;
+    tmp += 2;
+    EXPECT_EQ(zBegin, zip(numbers.begin(), strings.begin()));
+    EXPECT_EQ(*tmp, zBegin[2]);
+    EXPECT_EQ(zBegin + 3, zEnd);
+    EXPECT_LE(zBegin + 3, zEnd);
+    EXPECT_GE(zBegin + 3, zEnd);
+    EXPECT_FALSE(zBegin + 3 < zEnd);
+    EXPECT_FALSE(zBegin + 3 > zEnd);
+    EXPECT_EQ(zEnd - zBegin, 3);
+}
+
+TEST(Iterators, stl_algos) {
+    using namespace iterators;
+    std::array numbers{4, 2, 3, 1, 0};
+    auto zBegin = zip(numbers.begin(), numbers.rbegin());
+    auto zEnd = zip(numbers.end(), numbers.rend());
+    auto res = std::find_if(zBegin, zEnd, [](const auto &tuple) { return std::get<0>(tuple) == std::get<1>(tuple); });
+    ASSERT_NE(res, zEnd);
+    EXPECT_EQ(std::get<0>(*res), 3);
+}
