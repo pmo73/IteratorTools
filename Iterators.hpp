@@ -24,20 +24,23 @@
         template<typename T> \
         inline constexpr bool NAME##_v = NAME<T>::value;
 
-#define ELEM std::get<Idx>(tuple)
+#define ELEMENT1 std::get<Idx>(tuple1)
+#define ELEMENT2 std::get<Idx>(tuple2)
 
-#define TUPLE_FOR_EACH(OPERATION, COMBINATOR, NAME) \
-        template<typename Tuple, std::size_t ...Idx> \
-        static constexpr auto NAME##Impl(Tuple &tuple, std::index_sequence<Idx...>) \
-        noexcept() { \
-            return (OPERATIRON COMBINATOR ...); \
+#define BINARY_TUPLE_FOR_EACH(OPERATION, NAME) \
+        template<typename Tuple1, typename Tuple2, std::size_t ...Idx> \
+        static constexpr auto NAME##Impl(const Tuple1 &tuple1, const Tuple2 &tuple2, std::index_sequence<Idx...>) \
+        noexcept(noexcept((OPERATION))) { \
+            return (OPERATION); \
         } \
-        template<typename Tuple> \
-        static constexpr auto NAME(Tuple &tuple) \
-        noexcept(noexcept(tupleForEachImpl(tuple, std::make_index_sequence<std::tuple_size_v<Tuple>>{}))) { \
-            return NAME##Impl(tuple, std::make_index_sequence<std::tuple_size_v<Tuple>>{}); \
+        template<typename Tuple1, typename Tuple2> \
+        static constexpr auto NAME(const Tuple1 &tuple1, const Tuple2 &tuple2) \
+        noexcept(noexcept(NAME##Impl(tuple1, tuple2, std::make_index_sequence<std::tuple_size_v<Tuple1>>{}))) { \
+            static_assert(std::tuple_size_v<Tuple1> == std::tuple_size_v<Tuple2>); \
+            return NAME##Impl(tuple1, tuple2, std::make_index_sequence<std::tuple_size_v<Tuple1>>{}); \
         }
 
+#define BINARY_TUPLE_FOR_EACH_FOLD(OPERATION, COMBINATOR, NAME) BINARY_TUPLE_FOR_EACH( ( (OPERATION) COMBINATOR ...), NAME)
 
 #define TYPE_MAP_DEFAULT \
         template<typename> \
@@ -250,14 +253,14 @@ namespace iterators {
             template<bool B = is_random_accessible_v<Iterators>>
             constexpr auto operator+=(difference_type n) noexcept(is_nothrow_compound_assignable_plus_v<Iterators>)
                     -> std::enable_if_t<B, ZipIterator &> {
-                tupleForEach(iterators, [n](auto &it) constexpr noexcept(noexcept(it += n)) {it += n;});
+                std::apply([n](auto &&...it) {((it += n), ...);}, iterators);
                 return *this;
             }
 
             template<bool B = is_random_accessible_v<Iterators>>
             constexpr auto operator-=(difference_type n) noexcept(is_nothrow_compound_assignable_minus_v<Iterators>)
                     -> std::enable_if_t<B, ZipIterator &> {
-                tupleForEach(iterators, [n](auto &it) constexpr noexcept(noexcept(it -= n)) {it -= n;});
+                std::apply([n](auto &&...it) {((it -= n), ...);}, iterators);
                 return *this;
             }
 
@@ -284,8 +287,9 @@ namespace iterators {
 
             template<bool B = is_random_accessible_v<Iterators>>
             constexpr auto operator-(const ZipIterator &other) const
-                noexcept(noexcept(std::get<0>(this->iterators) - std::get<0>(other.iterators))) -> std::enable_if_t<B, difference_type> {
-                return std::get<0>(iterators) - std::get<0>(other.iterators);
+                noexcept(noexcept(ZipIterator::minDifference(this->iterators, other.iterators)))
+                -> std::enable_if_t<B, difference_type> {
+                return minDifference(iterators, other.iterators);
             }
 
             template<bool B = is_random_accessible_v<Iterators>>
@@ -294,13 +298,33 @@ namespace iterators {
                 return *(*this + n);
             }
 
-            /*template<bool B = is_random_accessible_v<Iterators>>
-            constexpr auto operator<(const ZipIterator &other) const noexcept() -> std::enable_if_t<B, bool> {
-            }*/
+            template<bool B = is_random_accessible_v<Iterators>>
+            constexpr auto operator<(const ZipIterator &other) const
+                noexcept(noexcept(ZipIterator::allLess(this->iterators, other.iterators))) -> std::enable_if_t<B, bool> {
+                return allLess(iterators, other.iterators);
+            }
+
+            template<bool B = is_random_accessible_v<Iterators>>
+            constexpr auto operator>(const ZipIterator &other) const
+            noexcept(noexcept(ZipIterator::allGreater(this->iterators, other.iterators))) -> std::enable_if_t<B, bool> {
+                return allGreater(iterators, other.iterators);
+            }
+
+            template<bool B = is_random_accessible_v<Iterators>>
+            constexpr auto operator<=(const ZipIterator &other) const noexcept(noexcept(*this > other))
+                -> std::enable_if_t<B, bool> {
+                return !(*this > other);
+            }
+
+            template<bool B = is_random_accessible_v<Iterators>>
+            constexpr auto operator>=(const ZipIterator &other) const noexcept(noexcept(*this < other))
+            -> std::enable_if_t<B, bool> {
+                return !(*this < other);
+            }
 
             template<typename Its>
             constexpr bool operator==(const ZipIterator<Its> &other) const
-            noexcept(noexcept(this->oneEqual(this->iterators, other.getIterators()))) {
+            noexcept(noexcept(ZipIterator::oneEqual(this->iterators, other.getIterators()))) {
                 return oneEqual(iterators, other.getIterators());
             }
 
@@ -318,31 +342,13 @@ namespace iterators {
             }
 
         private:
-            template<typename Tuple1, typename Tuple2, std::size_t ...Idx>
-            static constexpr bool
-            oneEqualImpl(const Tuple1 &t1, const Tuple2 &t2, std::index_sequence<Idx...>) noexcept((noexcept(
-                    std::get<Idx>(t1) == std::get<Idx>(t2)) && ...)) {
-                return (... || (std::get<Idx>(t1) == std::get<Idx>(t2)));
-            }
+            BINARY_TUPLE_FOR_EACH_FOLD(ELEMENT1 == ELEMENT2, ||, oneEqual)
 
-            template<typename Tuple1, typename Tuple2>
-            static constexpr bool oneEqual(const Tuple1 &t1, const Tuple2 &t2)
-            noexcept(noexcept(oneEqualImpl(t1, t2, std::make_index_sequence<std::tuple_size_v<Tuple1>>{}))) {
-                static_assert(std::tuple_size_v<Tuple1> == std::tuple_size_v<Tuple2>);
-                return oneEqualImpl(t1, t2, std::make_index_sequence<std::tuple_size_v<Tuple1>>{});
-            }
+            BINARY_TUPLE_FOR_EACH_FOLD(ELEMENT1 < ELEMENT2, &&, allLess)
 
-            template<typename Tuple, typename Fun, std::size_t ...Idx>
-            static constexpr auto tupleForEachImpl(Tuple &tuple, const Fun &f, std::index_sequence<Idx...>)
-                noexcept((std::is_nothrow_invocable_v<Fun, decltype(std::get<Idx>(tuple))> && ...)) {
-                return (f(std::get<Idx>(tuple)), ...);
-            }
+            BINARY_TUPLE_FOR_EACH_FOLD(ELEMENT1 > ELEMENT2, &&, allGreater)
 
-            template<typename Fun, typename Tuple>
-            static constexpr auto tupleForEach(Tuple &tuple, const Fun &f)
-                noexcept(noexcept(tupleForEachImpl(tuple, f, std::make_index_sequence<std::tuple_size_v<Tuple>>{}))) {
-                return tupleForEachImpl(tuple, f, std::make_index_sequence<std::tuple_size_v<Tuple>>{});
-            }
+            BINARY_TUPLE_FOR_EACH(std::min({ELEMENT1 - ELEMENT2 ...}), minDifference)
 
             Iterators iterators;
         };
