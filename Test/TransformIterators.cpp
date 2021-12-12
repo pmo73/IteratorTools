@@ -92,9 +92,19 @@ TEST(TransformIterators, elements_no_copy) {
         item += std::to_string(1);
     }
 
-    for (auto &item: transform(std::move(items), getString)) {
+    auto getStringWithMember = [i = MustNotCopy("a")](auto &a) -> auto & {
+        return a.s;
+    };
+
+    for (auto &item : transform(items, std::move(getStringWithMember))) {
         item += std::to_string(2);
     }
+
+    for (auto &item: transform(std::move(items), getString)) {
+        item += std::to_string(3);
+    }
+
+
 }
 
 TEST(TransformIterators, container_no_copy) {
@@ -186,10 +196,13 @@ TEST(TransformIterators, iterator_traits_and_operators_1) {
 TEST(TransformIterators, stl_algos) {
     using iterators::transform;
     std::vector<std::pair<int, std::string>> unordered{{1, "3"}, {2, "1"}, {3, "7"}};
+    std::vector<std::pair<int, std::string>> ordered{{1, "1"}, {2, "3"}, {3, "7"}};
     std::vector<std::string> dest;
     std::vector<std::string> expectedValues = {"3", "1", "7"};
     auto value = [](auto &pair) -> auto & { return pair.second; };
     auto valueView = transform(unordered, value);
     std::copy(valueView.begin(), valueView.end(), std::back_inserter(dest));
     EXPECT_EQ(dest, expectedValues);
+    std::sort(valueView.begin(), valueView.end());
+    EXPECT_EQ(unordered, ordered);
 }

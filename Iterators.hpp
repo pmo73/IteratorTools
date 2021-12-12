@@ -9,6 +9,7 @@
 #define ITERATORTOOLS_ITERATORS_HPP
 
 #include <tuple>
+#include <memory>
 #include <iterator>
 
 #define REFERENCE(TYPE) std::declval<std::add_lvalue_reference_t<TYPE>>()
@@ -556,6 +557,7 @@ namespace iterators {
             using Element = dereference_t<Iterator>;
             static_assert(std::is_invocable_v<Function, Element>,
                           "Function object is not callable with container element type");
+            using FPtr = std::shared_ptr<Function>;
         public:
             using reference = std::invoke_result_t<Function, Element>;
             using value_type = std::remove_cv_t<std::remove_reference_t<reference>>;
@@ -563,9 +565,14 @@ namespace iterators {
                     std::add_pointer_t<std::remove_reference_t<reference>>, void>;
             using difference_type = typename get_difference_type<Iterator>::type;
 
-            TransformIterator(const Iterator &iterator, const Function &func) noexcept(
-            std::is_nothrow_copy_constructible_v<Iterator> && std::is_nothrow_copy_constructible_v<Function>): it(
-                    iterator), f(func) {}
+            template<typename F>
+            TransformIterator(const Iterator &iterator, F &&func) : it(iterator),
+                                                                    f(std::make_shared<Function>(
+                                                                            std::forward<F>(func))) {}
+
+            TransformIterator(const Iterator &iterator,
+                              FPtr func) noexcept(std::is_nothrow_copy_constructible_v<Iterator>)
+                    : it(iterator), f(std::move(func)) {}
 
             TransformIterator &operator++() noexcept(noexcept(++this->it)) {
                 ++it;
@@ -672,7 +679,7 @@ namespace iterators {
 
             auto operator*() const noexcept(noexcept(*(this->it)) &&
                                             std::is_nothrow_invocable_v<Function, Element>) -> reference {
-                return f(*it);
+                return (*f)(*it);
             }
 
             template<bool ReturnsRef = std::is_lvalue_reference_v<reference>>
@@ -682,12 +689,13 @@ namespace iterators {
 
         private:
             Iterator it;
-            Function f;
+            FPtr f;
         };
         template<typename Container, typename Function>
         struct TransformContainer {
             using ContainerType = std::remove_reference_t<Container>;
             using Ftype = std::remove_reference_t<Function>;
+            using FPtr = std::shared_ptr<Ftype>;
             using It = decltype(std::begin(std::declval<std::add_lvalue_reference_t<ContainerType>>()));
             using ConstIt = decltype(std::begin(
                     std::declval<std::add_lvalue_reference_t<std::add_const_t<ContainerType>>>()));
@@ -695,31 +703,30 @@ namespace iterators {
             using ConstSentinel = decltype(std::end(
                     std::declval<std::add_lvalue_reference_t<std::add_const_t<ContainerType>>>()));
 
-            template<typename T>
-            TransformContainer(T &&init, Function &&func) : container(std::forward<T>(init)),
-                                                            f(std::forward<Function>(func)) {}
+            template<typename T, typename F>
+            TransformContainer(T &&init, F &&func) : container(std::forward<T>(init)),
+                                                     f(std::make_shared<Ftype>(std::forward<F>(func))) {}
 
             auto begin() const noexcept(std::is_nothrow_constructible_v<TransformIterator<ConstIt, Ftype>,
-                    ConstIt, Function>) {
+                    ConstIt, FPtr>) {
                 return TransformIterator<ConstIt, Ftype>(std::begin(container), f);
             }
 
             auto end() const noexcept(std::is_nothrow_constructible_v<TransformIterator<ConstSentinel, Ftype>,
-                    ConstSentinel, Function>) {
+                    ConstSentinel, FPtr>) {
                 return TransformIterator<ConstSentinel, Ftype>(std::end(container), f);
             }
 
-            auto begin() noexcept(std::is_nothrow_constructible_v<TransformIterator<It, Ftype>, It, Function>) {
+            auto begin() noexcept(std::is_nothrow_constructible_v<TransformIterator<It, Ftype>, It, FPtr>) {
                 return TransformIterator<It, Ftype>(std::begin(container), f);
             }
 
-            auto end() noexcept(std::is_nothrow_constructible_v<TransformIterator<Sentinel, Ftype>,
-                    Sentinel, Function>) {
+            auto end() noexcept(std::is_nothrow_constructible_v<TransformIterator<Sentinel, Ftype>, Sentinel, FPtr>) {
                 return TransformIterator<Sentinel, Ftype>(std::end(container), f);
             }
         private:
             Container container;
-            Function f;
+            FPtr f;
         };
     }
 
@@ -796,8 +803,10 @@ namespace iterators {
      * @return TransformIterator
      */
     template<typename Iterator, typename Function, std::enable_if_t<impl::dereferencible_v<Iterator>, int> = 0>
-    auto transform(const Iterator &iterator, Function &&function) -> impl::TransformIterator<Iterator, Function> {
-        return impl::TransformIterator<Iterator, Function>(iterator, std::forward<Function>(function));
+    auto transform(const Iterator &iterator,
+                   Function &&function) -> impl::TransformIterator<Iterator, std::remove_reference_t<Function>> {
+        return impl::TransformIterator<Iterator, std::remove_reference_t<Function>>(iterator,
+                                                                                    std::forward<Function>(function));
     }
 
     /**
