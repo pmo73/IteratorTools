@@ -546,9 +546,10 @@ namespace iterators {
         };
 
         template<typename Iterator, typename Function>
-        class TransformIterator : public iterator_category_from_value<iterator_category_value<Iterator>::value>{
+        class TransformIterator
+                : public traits::iterator_category_from_value<traits::iterator_category_value<Iterator>::value> {
             static_assert(std::is_copy_constructible_v<Function>, "Function object must be copyable");
-            using Element = dereference_t<Iterator>;
+            using Element = traits::dereference_t<Iterator>;
             static_assert(std::is_invocable_v<Function, Element>,
                           "Function object is not callable with container element type");
             using FPtr = std::shared_ptr<Function>;
@@ -579,85 +580,85 @@ namespace iterators {
                 return tmp;
             }
 
-            template<bool B = is_bidirectional_v<Iterator>>
+            template<bool B = traits::is_bidirectional_v<Iterator>>
             auto operator--() noexcept(noexcept(--this->it)) -> std::enable_if_t<B, TransformIterator &> {
                 --it;
                 return *this;
             }
 
-            template<bool B = is_bidirectional_v<Iterator>>
+            template<bool B = traits::is_bidirectional_v<Iterator>>
             auto operator--(int) noexcept(noexcept(this->it--)) -> std::enable_if_t<B, TransformIterator> {
                 TransformIterator tmp = *this;
                 --(*this);
                 return tmp;
             }
 
-            template<bool RA = is_random_accessible_v<Iterator>>
+            template<bool RA = traits::is_random_accessible_v<Iterator>>
             constexpr auto operator+=(
                     difference_type n) noexcept(noexcept(this->it += n)) -> std::enable_if_t<RA, TransformIterator &> {
                 it += n;
                 return *this;
             }
 
-            template<bool RA = is_random_accessible_v<Iterator>>
+            template<bool RA = traits::is_random_accessible_v<Iterator>>
             constexpr auto operator-=(
                     difference_type n) noexcept(noexcept(this->it -= n)) -> std::enable_if_t<RA, TransformIterator &> {
                 it -= n;
                 return *this;
             }
 
-            template<bool RA = is_random_accessible_v<Iterator>>
+            template<bool RA = traits::is_random_accessible_v<Iterator>>
             friend constexpr auto operator+(TransformIterator iter, difference_type n) noexcept(noexcept(iter += n))
                 -> std::enable_if_t<RA, TransformIterator> {
                 iter += n;
                 return iter;
             }
 
-            template<bool RA = is_random_accessible_v<Iterator>>
+            template<bool RA = traits::is_random_accessible_v<Iterator>>
             friend constexpr auto operator-(TransformIterator iter, difference_type n) noexcept(noexcept(iter -= n))
                 -> std::enable_if_t<RA, TransformIterator> {
                 iter -= n;
                 return iter;
             }
 
-            template<bool RA = is_random_accessible_v<Iterator>>
+            template<bool RA = traits::is_random_accessible_v<Iterator>>
             friend constexpr auto operator+(difference_type n, TransformIterator iter) noexcept(noexcept(iter += n))
                 -> std::enable_if_t<RA, TransformIterator> {
                 iter += n;
                 return iter;
             }
 
-            template<bool RA = is_random_accessible_v<Iterator>>
+            template<bool RA = traits::is_random_accessible_v<Iterator>>
             constexpr auto operator-(const TransformIterator &other) const noexcept(noexcept(this->it - other.it))
                 -> std::enable_if_t<RA, difference_type> {
                 return it - other.it;
             }
 
-            template<bool RA = is_random_accessible_v<Iterator>>
+            template<bool RA = traits::is_random_accessible_v<Iterator>>
             constexpr auto operator[](difference_type n) const noexcept(noexcept(*(*this + n)))
                 -> std::enable_if_t<RA, reference> {
                 return *(*this + n);
             }
 
-            template<bool RA = is_random_accessible_v<Iterator>>
+            template<bool RA = traits::is_random_accessible_v<Iterator>>
             constexpr auto operator<(const TransformIterator &other) const noexcept(noexcept(this->it < other.it))
                 -> std::enable_if_t<RA, bool> {
                 return it < other.it;
             }
 
-            template<bool RA = is_random_accessible_v<Iterator>>
+            template<bool RA = traits::is_random_accessible_v<Iterator>>
             constexpr auto operator>(const TransformIterator &other) const noexcept(noexcept(this->it > other.it))
                 -> std::enable_if_t<RA, bool> {
                 return it > other.it;
             }
 
-            template<bool RA = is_random_accessible_v<Iterator>>
+            template<bool RA = traits::is_random_accessible_v<Iterator>>
             constexpr auto operator<=(const TransformIterator &other) const noexcept(noexcept(this->it <= other.it))
                 -> std::enable_if_t<RA, bool> {
                 return it <= other.it;
             }
 
-            template<bool RA = is_random_accessible_v<Iterator>>
+            template<bool RA = traits::is_random_accessible_v<Iterator>>
             constexpr auto operator>=(const TransformIterator &other) const noexcept(noexcept(this->it >= other.it))
                 -> std::enable_if_t<RA, bool> {
                 return it >= other.it;
@@ -796,7 +797,7 @@ namespace iterators {
      * @param function transformation function
      * @return TransformIterator
      */
-    template<typename Iterator, typename Function, std::enable_if_t<impl::dereferencible_v<Iterator>, int> = 0>
+    template<typename Iterator, typename Function, std::enable_if_t<impl::traits::is_dereferencible_v<Iterator>, int> = 0>
     auto transform(const Iterator &iterator,
                    Function &&function) -> impl::TransformIterator<Iterator, std::remove_reference_t<Function>> {
         return impl::TransformIterator<Iterator, std::remove_reference_t<Function>>(iterator,
@@ -811,7 +812,7 @@ namespace iterators {
      * @param function function object that is applied to each element
      * @return TransformContainer class that provides begin and end members to be used in range based for loops
      */
-    template<typename Container, typename Function, std::enable_if_t<impl::is_container_v<Container>, int> = 0>
+    template<typename Container, typename Function, std::enable_if_t<impl::traits::is_container_v<Container>, int> = 0>
     auto transform(Container &&container, Function &&function) {
         return impl::TransformContainer<Container, Function>(std::forward<Container>(container),
                                                              std::forward<Function>(function));
