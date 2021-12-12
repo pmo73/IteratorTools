@@ -329,3 +329,44 @@ TEST(Iterators, stl_algos) {
     ASSERT_NE(res, zEnd);
     EXPECT_EQ(std::get<0>(*res), 3);
 }
+
+TEST(Iterators, noexcept_stl_containers) {
+    using namespace iterators;
+    std::array numbers {1, 2, 3};
+    std::list<std::string> strings{"1", "2" , "3"};
+    std::unordered_map<int, std::string> map{{1, "1"}, {2, "2"}, {3, "3"}};
+    auto zipper = zip(numbers, strings, map);
+    auto zipIt = zipper.begin();
+    auto nIt = numbers.begin();
+    auto sIt = strings.begin();
+    auto mapIt = map.begin();
+    EXPECT_EQ(noexcept(++zipIt), noexcept(++nIt) && noexcept(++sIt) && noexcept(++mapIt));
+    EXPECT_EQ(noexcept(zipIt++), noexcept(nIt++) && noexcept(sIt++) && noexcept(mapIt++));
+    EXPECT_EQ(noexcept(zipIt == zipIt), noexcept(nIt == nIt) && noexcept(sIt == sIt) && noexcept(mapIt == mapIt));
+    EXPECT_EQ(noexcept(zipIt != zipIt), noexcept(nIt != nIt) && noexcept(sIt != sIt) && noexcept(mapIt != mapIt));
+    EXPECT_EQ(noexcept(*zipIt), noexcept(*nIt) && noexcept(*sIt) && noexcept(*mapIt));
+}
+
+TEST(Iterators, noexcept_throwing_iterator) {
+    using namespace iterators;
+    std::array numbers{1, 2, 3};
+    BadIterator badIt;
+    // zip order is necessary so the comparison operators of BadIterator actually get called
+    auto zipIt = zip(badIt, numbers.begin());
+    EXPECT_THROW(++zipIt, std::runtime_error);
+    EXPECT_THROW(zipIt++, std::runtime_error);
+    EXPECT_THROW(--zipIt, std::runtime_error);
+    EXPECT_THROW(zipIt--, std::runtime_error);
+    EXPECT_THROW(zipIt == zipIt, std::runtime_error);
+    EXPECT_THROW(zipIt != zipIt, std::runtime_error);
+    EXPECT_THROW(zipIt < zipIt, std::runtime_error);
+    EXPECT_THROW(zipIt > zipIt, std::runtime_error);
+    EXPECT_THROW(zipIt <= zipIt, std::runtime_error);
+    EXPECT_THROW(zipIt >= zipIt, std::runtime_error);
+    EXPECT_THROW(zipIt + 1, std::runtime_error);
+    EXPECT_THROW(1 + zipIt, std::runtime_error);
+    EXPECT_THROW(zipIt - 1, std::runtime_error);
+    EXPECT_THROW(zipIt[1], std::runtime_error);
+    EXPECT_THROW(*zipIt, std::runtime_error);
+    EXPECT_THROW(zipIt - zipIt, std::runtime_error);
+}

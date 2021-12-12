@@ -354,7 +354,7 @@ namespace iterators {
 
             BINARY_TUPLE_FOR_EACH_FOLD(ELEMENT1 > ELEMENT2, &&, allGreater)
 
-            BINARY_TUPLE_FOR_EACH(std::min({ELEMENT1 - ELEMENT2 ...}), minDifference)
+            BINARY_TUPLE_FOR_EACH(std::min<difference_type>({ELEMENT1 - ELEMENT2 ...}), minDifference)
 
             Iterators iterators;
         };
