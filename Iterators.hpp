@@ -67,150 +67,144 @@
 
 namespace iterators {
     namespace impl {
-        template<bool Cond, typename T>
-        using reference_if_t = std::conditional_t<Cond, std::add_lvalue_reference_t<T>, T>;
+        namespace traits {
+            template<bool Cond, typename T>
+            using reference_if_t = std::conditional_t<Cond, std::add_lvalue_reference_t<T>, T>;
 
-        template<bool Cond, typename T>
-        using const_if_t = std::conditional_t<Cond, std::add_const_t<T>, T>;
+            template<bool Cond, typename T>
+            using const_if_t = std::conditional_t<Cond, std::add_const_t<T>, T>;
 
-        template<typename T>
-        std::true_type
-        container_test(decltype(std::begin(std::declval<T>()), std::end(std::declval<T>()), std::declval<T>()));
+            template<typename T, typename = std::void_t<>>
+            struct is_container : std::false_type {};
 
-        template<typename T>
-        std::false_type container_test(...);
+            template<typename T>
+            struct is_container<T, std::void_t<decltype(std::begin(std::declval<T>()), std::end(std::declval<T>()))>>
+                    : std::true_type {};
 
-        template<typename T>
-        struct is_container : decltype(container_test<T>(std::declval<T>())) {};
+            template<typename T>
+            constexpr inline bool is_container_v = is_container<T>::value;
 
-        template<typename T>
-        constexpr inline bool is_container_v = is_container<T>::value;
+            template<typename T, typename = std::void_t<>>
+            struct is_dereferencible : std::false_type {};
 
-        template<typename T>
-        std::true_type deref_test(decltype(*std::declval<T>(), std::declval<T>()));
+            template<typename T>
+            struct is_dereferencible<T, std::void_t<decltype(*std::declval<T>())>> : std::true_type {};
 
-        template<typename T>
-        std::false_type deref_test(...);
+            template<typename T>
+            constexpr inline bool is_dereferencible_v = is_dereferencible<T>::value;
 
-        template<typename T>
-        struct dereferencible : decltype(deref_test<T>(std::declval<T>())) {};
+            template<typename T, bool B>
+            struct dereference {
+                using type = void;
+            };
 
-        template<typename T>
-        constexpr inline bool dereferencible_v = dereferencible<T>::value;
+            template<typename T>
+            struct dereference<T, true> {
+                using type = decltype(*std::declval<T>());
+            };
 
-        struct empty {};
+            template<typename T>
+            using dereference_t = typename dereference<T, is_dereferencible_v<T>>::type;
 
-        template<typename T, bool B>
-        struct dereference {
-            using type = empty;
-        };
+            template<typename T>
+            struct values{};
 
-        template<typename T>
-        struct dereference<T, true> {
-            using type = decltype(*std::declval<T>());
-        };
+            template<typename ...Ts>
+            struct values<std::tuple<Ts...>> {
+                using type = std::tuple<dereference_t<Ts>...>;
+            };
 
-        template<typename T>
-        using dereference_t = typename dereference<T, dereferencible_v<T>>::type;
+            template<typename T>
+            using values_t = typename values<T>::type;
 
-        template<typename T>
-        struct values{};
+            ALL_NOEXCEPT(++REFERENCE(Ts), is_nothrow_incrementible)
+            ALL_NOEXCEPT(--REFERENCE(Ts), is_nothrow_decrementible)
+            ALL_NOEXCEPT(*REFERENCE(Ts), is_nothrow_dereferencible)
+            ALL_NOEXCEPT(REFERENCE(Ts) += 5, is_nothrow_compound_assignable_plus)
+            ALL_NOEXCEPT(REFERENCE(Ts) -= 5, is_nothrow_compound_assignable_minus)
 
-        template<typename ...Ts>
-        struct values<std::tuple<Ts...>> {
-            using type = std::tuple<dereference_t<Ts>...>;
-        };
+            TYPE_MAP_DEFAULT
 
-        template<typename T>
-        using values_t = typename values<T>::type;
+            TYPE_MAP(std::input_iterator_tag, 1)
+            TYPE_MAP(std::forward_iterator_tag, 2)
+            TYPE_MAP(std::bidirectional_iterator_tag, 3)
+            TYPE_MAP(std::random_access_iterator_tag, 4)
 
-        ALL_NOEXCEPT(++REFERENCE(Ts), is_nothrow_incrementible)
-        ALL_NOEXCEPT(--REFERENCE(Ts), is_nothrow_decrementible)
-        ALL_NOEXCEPT(*REFERENCE(Ts), is_nothrow_dereferencible)
-        ALL_NOEXCEPT(REFERENCE(Ts) += 5, is_nothrow_compound_assignable_plus)
-        ALL_NOEXCEPT(REFERENCE(Ts) -= 5, is_nothrow_compound_assignable_minus)
+            TYPE_MAP_ALIAS
 
-        TYPE_MAP_DEFAULT
+            template<typename T, typename = std::void_t<>>
+            struct iterator_category_value {
+                static constexpr std::size_t value = 0;
+            };
 
-        TYPE_MAP(std::input_iterator_tag, 1)
-        TYPE_MAP(std::forward_iterator_tag, 2)
-        TYPE_MAP(std::bidirectional_iterator_tag, 3)
-        TYPE_MAP(std::random_access_iterator_tag, 4)
+            template<typename T>
+            struct iterator_category_value<T, std::void_t<typename std::iterator_traits<T>::iterator_category>> {
+                static constexpr std::size_t value = type_to_value_v<typename std::iterator_traits<T>::iterator_category>;
+            };
 
-        TYPE_MAP_ALIAS
+            template<std::size_t Val>
+            struct iterator_category_from_value {
+                using iterator_category = value_to_type_t<Val>;
+            };
 
-        template<typename T, typename = std::void_t<>>
-        struct iterator_category_value {
-            static constexpr std::size_t value = 0;
-        };
+            template<>
+            struct iterator_category_from_value<0> {};
 
-        template<typename T>
-        struct iterator_category_value<T, std::void_t<typename std::iterator_traits<T>::iterator_category>> {
-            static constexpr std::size_t value = type_to_value_v<typename std::iterator_traits<T>::iterator_category>;
-        };
+            template<typename T>
+            struct minimum_category {};
 
-        template<std::size_t Val>
-        struct iterator_category_from_value {
-            using iterator_category = value_to_type_t<Val>;
-        };
+            template<typename ...Ts>
+            struct minimum_category<std::tuple<Ts...>> {
+                static constexpr std::size_t value = std::min({iterator_category_value<Ts>::value...});
+            };
 
-        template<>
-        struct iterator_category_from_value<0> {};
+            template<typename T>
+            constexpr inline std::size_t minimum_category_v = minimum_category<T>::value;
 
-        template<typename T>
-        struct minimum_category {};
+            template<typename T, typename = std::void_t<>>
+            struct is_random_accessible {
+                static constexpr bool value = false;
+            };
 
-        template<typename ...Ts>
-        struct minimum_category<std::tuple<Ts...>> {
-            static constexpr std::size_t value = std::min({iterator_category_value<Ts>::value...});
-        };
+            template<typename T>
+            struct is_random_accessible<T, std::void_t<typename std::iterator_traits<T>::iterator_category>> {
+                static constexpr bool value = std::is_base_of_v<std::random_access_iterator_tag,
+                        typename std::iterator_traits<T>::iterator_category>;
+            };
 
-        template<typename T>
-        constexpr inline std::size_t minimum_category_v = minimum_category<T>::value;
+            template<typename ...Ts>
+            struct is_random_accessible<std::tuple<Ts...>, std::void_t<value_to_type_t<minimum_category_v<std::tuple<Ts...>>>>> {
+                static constexpr bool value = std::is_base_of_v<std::random_access_iterator_tag,
+                        value_to_type_t<minimum_category_v<std::tuple<Ts...>>>>;
+            };
 
-        template<typename T, typename = std::void_t<>>
-        struct is_random_accessible {
-            static constexpr bool value = false;
-        };
+            template<typename T>
+            constexpr inline bool is_random_accessible_v = is_random_accessible<T>::value;
 
-        template<typename T>
-        struct is_random_accessible<T, std::void_t<typename std::iterator_traits<T>::iterator_category>> {
-            static constexpr bool value = std::is_base_of_v<std::random_access_iterator_tag,
-                    typename std::iterator_traits<T>::iterator_category>;
-        };
+            template<typename T, typename = std::void_t<>>
+            struct is_bidirectional {
+                static constexpr bool value = false;
+            };
 
-        template<typename ...Ts>
-        struct is_random_accessible<std::tuple<Ts...>, std::void_t<value_to_type_t<minimum_category_v<std::tuple<Ts...>>>>> {
-            static constexpr bool value = std::is_base_of_v<std::random_access_iterator_tag,
-                    value_to_type_t<minimum_category_v<std::tuple<Ts...>>>>;
-        };
+            template<typename T>
+            struct is_bidirectional<T, std::void_t<typename std::iterator_traits<T>::iterator_category>> {
+                static constexpr bool value = std::is_base_of_v<std::bidirectional_iterator_tag,
+                        typename std::iterator_traits<T>::iterator_category>;
+            };
 
-        template<typename T>
-        constexpr inline bool is_random_accessible_v = is_random_accessible<T>::value;
+            template<typename ...Ts>
+            struct is_bidirectional<std::tuple<Ts...>, std::void_t<value_to_type_t<minimum_category_v<std::tuple<Ts...>>>>> {
+                static constexpr bool value = std::is_base_of_v<std::bidirectional_iterator_tag,
+                        value_to_type_t<minimum_category_v<std::tuple<Ts...>>>>;
+            };
 
-        template<typename T, typename = std::void_t<>>
-        struct is_bidirectional {
-            static constexpr bool value = false;
-        };
-
-        template<typename T>
-        struct is_bidirectional<T, std::void_t<typename std::iterator_traits<T>::iterator_category>> {
-            static constexpr bool value = std::is_base_of_v<std::bidirectional_iterator_tag,
-                    typename std::iterator_traits<T>::iterator_category>;
-        };
-
-        template<typename ...Ts>
-        struct is_bidirectional<std::tuple<Ts...>, std::void_t<value_to_type_t<minimum_category_v<std::tuple<Ts...>>>>> {
-            static constexpr bool value = std::is_base_of_v<std::bidirectional_iterator_tag,
-                value_to_type_t<minimum_category_v<std::tuple<Ts...>>>>;
-        };
-
-        template<typename T>
-        constexpr inline bool is_bidirectional_v = is_bidirectional<T>::value;
+            template<typename T>
+            constexpr inline bool is_bidirectional_v = is_bidirectional<T>::value;
+        }
 
         template<typename Iterators>
-        class ZipIterator : public iterator_category_from_value<minimum_category_v<Iterators>> {
-            using ValueTuple = impl::values_t<Iterators>;
+        class ZipIterator : public traits::iterator_category_from_value<traits::minimum_category_v<Iterators>> {
+            using ValueTuple = traits::values_t<Iterators>;
         public:
             using value_type = ValueTuple;
             using reference = value_type;
@@ -224,99 +218,99 @@ namespace iterators {
             template<typename ...Its>
             explicit constexpr ZipIterator(Its &&...its) : iterators(std::tuple(std::forward<Its>(its)...)) {}
 
-            constexpr ZipIterator &operator++() noexcept(is_nothrow_incrementible_v<Iterators>) {
+            constexpr ZipIterator &operator++() noexcept(traits::is_nothrow_incrementible_v<Iterators>) {
                 std::apply([](auto &&...it) { (++it, ...); }, iterators);
                 return *this;
             }
 
-            constexpr ZipIterator operator++(int) noexcept(is_nothrow_incrementible_v<Iterators>) {
+            constexpr ZipIterator operator++(int) noexcept(traits::is_nothrow_incrementible_v<Iterators>) {
                 ZipIterator tmp = *this;
                 std::apply([](auto &&...it) { (++it, ...); }, iterators);
                 return tmp;
             }
 
-            template<bool B = is_bidirectional_v<Iterators>>
-            constexpr auto operator--() noexcept(is_nothrow_decrementible_v<Iterators>)
+            template<bool B = traits::is_bidirectional_v<Iterators>>
+            constexpr auto operator--() noexcept(traits::is_nothrow_decrementible_v<Iterators>)
                 -> std::enable_if_t<B, ZipIterator &> {
                 std::apply([](auto &&...it) { (--it, ...); }, iterators);
                 return *this;
             }
 
-            template<bool B = is_bidirectional_v<Iterators>>
-            constexpr auto operator--(int) noexcept(is_nothrow_decrementible_v<Iterators>)
+            template<bool B = traits::is_bidirectional_v<Iterators>>
+            constexpr auto operator--(int) noexcept(traits::is_nothrow_decrementible_v<Iterators>)
                 -> std::enable_if_t<B, ZipIterator> {
                 ZipIterator tmp = *this;
                 std::apply([](auto &&...it) { (--it, ...); }, iterators);
                 return tmp;
             }
 
-            template<bool B = is_random_accessible_v<Iterators>>
-            constexpr auto operator+=(difference_type n) noexcept(is_nothrow_compound_assignable_plus_v<Iterators>)
+            template<bool B = traits::is_random_accessible_v<Iterators>>
+            constexpr auto operator+=(difference_type n) noexcept(traits::is_nothrow_compound_assignable_plus_v<Iterators>)
                     -> std::enable_if_t<B, ZipIterator &> {
                 std::apply([n](auto &&...it) {((it += n), ...);}, iterators);
                 return *this;
             }
 
-            template<bool B = is_random_accessible_v<Iterators>>
-            constexpr auto operator-=(difference_type n) noexcept(is_nothrow_compound_assignable_minus_v<Iterators>)
+            template<bool B = traits::is_random_accessible_v<Iterators>>
+            constexpr auto operator-=(difference_type n) noexcept(traits::is_nothrow_compound_assignable_minus_v<Iterators>)
                     -> std::enable_if_t<B, ZipIterator &> {
                 std::apply([n](auto &&...it) {((it -= n), ...);}, iterators);
                 return *this;
             }
 
-            template<bool B = is_random_accessible_v<Iterators>>
+            template<bool B = traits::is_random_accessible_v<Iterators>>
             friend constexpr auto operator+(ZipIterator it, difference_type n)
-                noexcept(is_nothrow_compound_assignable_plus_v<Iterators>) -> std::enable_if_t<B, ZipIterator> {
+                noexcept(traits::is_nothrow_compound_assignable_plus_v<Iterators>) -> std::enable_if_t<B, ZipIterator> {
                 it += n;
                 return it;
             }
 
-            template<bool B = is_random_accessible_v<Iterators>>
+            template<bool B = traits::is_random_accessible_v<Iterators>>
             friend constexpr auto operator+(difference_type n, ZipIterator it)
-                noexcept(is_nothrow_compound_assignable_plus_v<Iterators>) -> std::enable_if_t<B, ZipIterator> {
+                noexcept(traits::is_nothrow_compound_assignable_plus_v<Iterators>) -> std::enable_if_t<B, ZipIterator> {
                 it += n;
                 return it;
             }
 
-            template<bool B = is_random_accessible_v<Iterators>>
+            template<bool B = traits::is_random_accessible_v<Iterators>>
             friend constexpr auto operator-(ZipIterator it, difference_type n)
-            noexcept(is_nothrow_compound_assignable_minus_v<Iterators>) -> std::enable_if_t<B, ZipIterator> {
+            noexcept(traits::is_nothrow_compound_assignable_minus_v<Iterators>) -> std::enable_if_t<B, ZipIterator> {
                 it -= n;
                 return it;
             }
 
-            template<bool B = is_random_accessible_v<Iterators>>
+            template<bool B = traits::is_random_accessible_v<Iterators>>
             constexpr auto operator-(const ZipIterator &other) const
                 noexcept(noexcept(ZipIterator::minDifference(this->iterators, other.iterators)))
                 -> std::enable_if_t<B, difference_type> {
                 return minDifference(iterators, other.iterators);
             }
 
-            template<bool B = is_random_accessible_v<Iterators>>
+            template<bool B = traits::is_random_accessible_v<Iterators>>
             constexpr auto operator[](difference_type n) const noexcept(noexcept(*(*this + n)))
                 -> std::enable_if_t<B, reference> {
                 return *(*this + n);
             }
 
-            template<bool B = is_random_accessible_v<Iterators>>
+            template<bool B = traits::is_random_accessible_v<Iterators>>
             constexpr auto operator<(const ZipIterator &other) const
                 noexcept(noexcept(ZipIterator::allLess(this->iterators, other.iterators))) -> std::enable_if_t<B, bool> {
                 return allLess(iterators, other.iterators);
             }
 
-            template<bool B = is_random_accessible_v<Iterators>>
+            template<bool B = traits::is_random_accessible_v<Iterators>>
             constexpr auto operator>(const ZipIterator &other) const
             noexcept(noexcept(ZipIterator::allGreater(this->iterators, other.iterators))) -> std::enable_if_t<B, bool> {
                 return allGreater(iterators, other.iterators);
             }
 
-            template<bool B = is_random_accessible_v<Iterators>>
+            template<bool B = traits::is_random_accessible_v<Iterators>>
             constexpr auto operator<=(const ZipIterator &other) const noexcept(noexcept(*this > other))
                 -> std::enable_if_t<B, bool> {
                 return !(*this > other);
             }
 
-            template<bool B = is_random_accessible_v<Iterators>>
+            template<bool B = traits::is_random_accessible_v<Iterators>>
             constexpr auto operator>=(const ZipIterator &other) const noexcept(noexcept(*this < other))
             -> std::enable_if_t<B, bool> {
                 return !(*this < other);
@@ -333,7 +327,7 @@ namespace iterators {
                 return !(*this == other);
             }
 
-            auto operator*() const noexcept(impl::is_nothrow_dereferencible_v<Iterators>) {
+            auto operator*() const noexcept(traits::is_nothrow_dereferencible_v<Iterators>) {
                 return std::apply([](auto &&...it) { return ValueTuple(*it...); }, iterators);
             }
 
@@ -359,10 +353,10 @@ namespace iterators {
             using ContainerTuple = std::tuple<Iterable...>;
             template<bool Const>
             using Iterators = std::tuple<decltype(std::begin(
-                    std::declval<std::add_lvalue_reference_t<const_if_t<Const, std::remove_reference_t<Iterable>>>>()))...>;
+                    std::declval<std::add_lvalue_reference_t<traits::const_if_t<Const, std::remove_reference_t<Iterable>>>>()))...>;
             template<bool Const>
             using Sentinels = std::tuple<decltype(std::end(
-                    std::declval<std::add_lvalue_reference_t<const_if_t<Const, std::remove_reference_t<Iterable>>>>()))...>;
+                    std::declval<std::add_lvalue_reference_t<traits::const_if_t<Const, std::remove_reference_t<Iterable>>>>()))...>;
             using IteratorTuple = Iterators<false>;
             using CIteratorTuple = Iterators<true>;
             using SentinelTuple = Sentinels<false>;
@@ -546,7 +540,7 @@ namespace iterators {
      * @param iterators arbitrary number of iterators
      * @return ZipIterator
      */
-    template<typename ...Iterators, std::enable_if_t<(impl::dereferencible_v<Iterators> && ...), int> = 0>
+    template<typename ...Iterators, std::enable_if_t<(impl::traits::is_dereferencible_v<Iterators> && ...), int> = 0>
     auto zip(Iterators ...iterators) -> impl::ZipIterator<std::tuple<Iterators...>> {
         return impl::ZipIterator<std::tuple<Iterators...>>(iterators...);
     }
@@ -559,7 +553,7 @@ namespace iterators {
      * @param iterable Arbitrary number of containers
      * @return zip-container class that provides begin and end members to be used in range based for-loops
      */
-    template<typename ...Iterable, std::enable_if_t<(impl::is_container_v<Iterable> && ...), int> = 0>
+    template<typename ...Iterable, std::enable_if_t<(impl::traits::is_container_v<Iterable> && ...), int> = 0>
     auto zip(Iterable &&...iterable) {
         return impl::ZipContainer<Iterable...>(std::forward<Iterable>(iterable)...);
     }
@@ -572,7 +566,7 @@ namespace iterators {
      */
     template<typename ...Iterable>
     auto const_zip(Iterable &&...iterable) {
-        return impl::ZipContainer<impl::reference_if_t<std::is_lvalue_reference_v<Iterable>,
+        return impl::ZipContainer<impl::traits::reference_if_t<std::is_lvalue_reference_v<Iterable>,
                 std::add_const_t<std::remove_reference_t<Iterable>>>...>(std::forward<Iterable>(iterable)...);
     }
 
