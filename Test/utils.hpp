@@ -100,4 +100,59 @@ private:
     bool moved = false;
 };
 
+struct BadIterator {
+    using value_type = int;
+    using reference = int;
+    using pointer = int*;
+    using difference_type = int;
+    using iterator_category = std::random_access_iterator_tag;
+
+    BadIterator &operator++();
+
+    BadIterator operator++(int);
+
+    BadIterator &operator--();
+
+    BadIterator operator--(int);
+
+    BadIterator &operator+=(int);
+
+    BadIterator &operator-=(int);
+
+    friend BadIterator operator+(BadIterator, int) {
+        throw std::runtime_error("");
+        return BadIterator{};
+    }
+
+    friend BadIterator operator+(int, BadIterator) {
+        throw std::runtime_error("");
+        return BadIterator{};
+    }
+
+    friend BadIterator operator-(BadIterator, int) {
+        throw std::runtime_error("");
+        return BadIterator{};
+    }
+
+    int operator-(const BadIterator &) const;
+
+    int operator[](int) const;
+
+    bool operator<(const BadIterator &) const;
+
+    bool operator>(const BadIterator &) const;
+
+    bool operator<=(const BadIterator &) const;
+
+    bool operator>=(const BadIterator &) const;
+
+    bool operator==(const BadIterator &) const;
+
+    bool operator!=(const BadIterator &) const;
+
+    int operator*() const;
+
+    int* operator->() const;
+};
+
 #endif //BIDIRECTIONALMAP_MUSTNOTCOPY_HPP

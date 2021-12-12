@@ -16,3 +16,83 @@ bool MustNotCopy::operator==(const MustNotCopy &other) const {
 bool MustNotCopy::operator!=(const MustNotCopy &other) const {
     return !(*this == other);
 }
+
+BadIterator &BadIterator::operator++() {
+    throw std::runtime_error("");
+    return *this;
+}
+
+BadIterator BadIterator::operator++(int) {
+    throw std::runtime_error("");
+    return *this;
+}
+
+BadIterator &BadIterator::operator--(){
+    throw std::runtime_error("");
+    return *this;
+}
+
+BadIterator BadIterator::operator--(int) {
+    throw std::runtime_error("");
+    return *this;
+}
+
+BadIterator &BadIterator::operator+=(int){
+    throw std::runtime_error("");
+    return *this;
+}
+
+BadIterator &BadIterator::operator-=(int){
+    throw std::runtime_error("");
+    return *this;
+}
+
+int BadIterator::operator-(const BadIterator &) const {
+    throw std::runtime_error("");
+    return 0;
+}
+
+int BadIterator::operator[](int) const{
+    throw std::runtime_error("");
+    return 0;
+}
+
+bool BadIterator::operator<(const BadIterator &) const {
+    throw std::runtime_error("");
+    return false;
+}
+
+bool BadIterator::operator>(const BadIterator &) const {
+    throw std::runtime_error("");
+    return false;
+}
+
+bool BadIterator::operator<=(const BadIterator &) const {
+    throw std::runtime_error("");
+    return false;
+}
+
+bool BadIterator::operator>=(const BadIterator &) const {
+    throw std::runtime_error("");
+    return false;
+}
+
+bool BadIterator::operator==(const BadIterator &) const {
+    throw std::runtime_error("");
+    return false;
+}
+
+bool BadIterator::operator!=(const BadIterator &) const {
+    throw std::runtime_error("");
+    return false;
+}
+
+int BadIterator::operator*() const {
+    throw std::runtime_error("");
+    return 0;
+}
+
+int* BadIterator::operator->() const {
+    throw std::runtime_error("");
+    return nullptr;
+}
