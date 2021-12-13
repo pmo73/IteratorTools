@@ -328,6 +328,16 @@ TEST(Iterators, stl_algos) {
     auto res = std::find_if(zBegin, zEnd, [](const auto &tuple) { return std::get<0>(tuple) == std::get<1>(tuple); });
     ASSERT_NE(res, zEnd);
     EXPECT_EQ(std::get<0>(*res), 3);
+    std::vector<std::string> strings{"a", "b", "c"};
+    auto stringsCopy = strings;
+    auto zipView = zip(numbers, strings);
+    auto begin = *zipView.begin();
+    auto second = zipView.begin()[1];
+    std::swap(begin, second);
+ //   std::sort(zipView.begin(), zipView.end());
+    std::array sorted{1, 2, 3, 4, 0};
+    EXPECT_EQ(numbers, sorted);
+    EXPECT_EQ(strings, stringsCopy);
 }
 
 TEST(Iterators, noexcept_stl_containers) {

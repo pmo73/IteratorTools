@@ -11,6 +11,7 @@
 #include <tuple>
 
 #define REFERENCE(TYPE) std::declval<std::add_lvalue_reference_t<TYPE>>()
+#define COMMA ,
 
 #define ALL_NOEXCEPT(OP, NAME) \
         template<typename T> \
@@ -67,6 +68,9 @@
 
 namespace iterators {
     namespace impl {
+        template<typename ...Ts>
+        struct Tuple;
+
         namespace traits {
             template<bool Cond, typename T>
             using reference_if_t = std::conditional_t<Cond, std::add_lvalue_reference_t<T>, T>;
@@ -111,7 +115,7 @@ namespace iterators {
 
             template<typename ...Ts>
             struct values<std::tuple<Ts...>> {
-                using type = std::tuple<dereference_t<Ts>...>;
+                using type = Tuple<dereference_t<Ts>...>;
             };
 
             template<typename T>
@@ -201,6 +205,30 @@ namespace iterators {
             template<typename T>
             constexpr inline bool is_bidirectional_v = is_bidirectional<T>::value;
         }
+
+        template<typename ...Ts>
+        struct Tuple : public std::tuple<Ts...> {
+            template<typename ...Us>
+            explicit Tuple(Us &&... args) : std::tuple<Ts...>(std::forward<Us>(args)...) {}
+
+            Tuple(const Tuple &) = default;
+            Tuple(Tuple &&) = default;
+            Tuple &operator=(const Tuple &other) noexcept(noexcept(this->copyAssign(*this, other))) {
+                copyAssign(*this, other);
+                return *this;
+            }
+
+            Tuple &operator=(Tuple &&other) noexcept(noexcept(this->moveAssign(*this, other))) {
+                moveAssign(*this, other);
+                return *this;
+            }
+
+            ~Tuple() = default;
+
+        private:
+            BINARY_TUPLE_FOR_EACH_FOLD((ELEMENT1 = ELEMENT2), COMMA, copyAssign)
+            BINARY_TUPLE_FOR_EACH_FOLD((ELEMENT1 = std::move(ELEMENT2)), COMMA, moveAssign)
+        };
 
         template<typename Iterators>
         class ZipIterator : public traits::iterator_category_from_value<traits::minimum_category_v<Iterators>> {
@@ -597,6 +625,15 @@ namespace iterators {
     auto const_enumerate(Container &&container, T start = T(0), T increment = T(1)) {
         return const_zip(impl::CounterContainer(start, increment), std::forward<Container>(container));
     }
+
+}
+
+namespace std {
+    template<typename ...Ts>
+    struct tuple_size<iterators::impl::Tuple<Ts...>> :  std::integral_constant<std::size_t, sizeof...(Ts)> {};
+
+    template<std::size_t Index, typename ...Ts>
+    struct tuple_element<Index, iterators::impl::Tuple<Ts...>> : tuple_element<Index, tuple<Ts...>> {};
 
 }
 
