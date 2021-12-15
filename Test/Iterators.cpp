@@ -335,6 +335,11 @@ TEST(Iterators, stl_algos) {
     std::array sorted{2, 3, 4, 1, 0};
     EXPECT_EQ(numbers, sorted);
     EXPECT_EQ(strings, sortedStrings);
+    std::vector<bool> booleans{true, false, true};
+    auto boolZipView = zip(booleans, strings);
+    std::sort(boolZipView.begin(), boolZipView.end());
+    std::vector sortedBools{false, true, true};
+    EXPECT_EQ(booleans, sortedBools);
 }
 
 TEST(Iterators, noexcept_stl_containers) {

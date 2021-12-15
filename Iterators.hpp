@@ -123,12 +123,41 @@ namespace iterators {
             template<typename T>
             using references_t = typename references<T>::type;
 
+            template<typename T, typename = std::void_t<>>
+            struct has_iterator_traits {
+                static constexpr bool value = false;
+            };
+
+            template<typename T>
+            struct has_iterator_traits<T, std::void_t<typename std::iterator_traits<T>::value_type,
+                    typename std::iterator_traits<T>::reference,
+                    typename std::iterator_traits<T>::iterator_category,
+                    typename std::iterator_traits<T>::difference_type>> {
+                static constexpr bool value = true;
+            };
+
+            template<typename T>
+            constexpr inline bool has_iterator_traits_v = has_iterator_traits<T>::value;
+
+            template<typename T, bool B>
+            struct iterator_value {
+                using type = std::remove_reference_t<dereference_t<T>>;
+            };
+
+            template<typename T>
+            struct iterator_value<T, true> {
+                using type = typename std::iterator_traits<T>::value_type;
+            };
+
+            template<typename T>
+            using iterator_value_t = typename iterator_value<T, has_iterator_traits_v<T>>::type;
+
             template<typename T>
             struct values {};
 
             template<typename ...Ts>
-            struct values<ReferenceTuple<Ts...>> {
-                using type = ReferenceTuple<std::remove_reference_t<Ts>...>;
+            struct values<std::tuple<Ts...>> {
+                using type = ReferenceTuple<iterator_value_t<Ts>...>;
             };
 
             template<typename T>
@@ -267,7 +296,7 @@ namespace iterators {
             using ValueTuple = traits::references_t<Iterators>;
         public:
             using reference = traits::references_t<Iterators>;
-            using value_type = traits::values_t<reference>;
+            using value_type = traits::values_t<Iterators>;
             using pointer = void;
             using difference_type = std::ptrdiff_t;
 
