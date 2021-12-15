@@ -12,6 +12,8 @@
 
 #define REFERENCE(TYPE) std::declval<std::add_lvalue_reference_t<TYPE>>()
 #define COMMA ,
+#define CONST_SIGNATURE const
+#define NON_CONST_SIGNATURE
 
 #define ALL_NOEXCEPT(OP, NAME) \
         template<typename T> \
@@ -28,20 +30,20 @@
 #define ELEMENT1 std::get<Idx>(tuple1)
 #define ELEMENT2 std::get<Idx>(tuple2)
 
-#define BINARY_TUPLE_FOR_EACH(OPERATION, NAME) \
+#define BINARY_TUPLE_FOR_EACH(SIGNATURE, OPERATION, NAME) \
         template<typename Tuple1, typename Tuple2, std::size_t ...Idx> \
-        static constexpr auto NAME##Impl(const Tuple1 &tuple1, const Tuple2 &tuple2, std::index_sequence<Idx...>) \
+        static constexpr auto NAME##Impl(SIGNATURE Tuple1 &tuple1, SIGNATURE Tuple2 &tuple2, std::index_sequence<Idx...>) \
         noexcept(noexcept((OPERATION))) { \
             return (OPERATION); \
         } \
         template<typename Tuple1, typename Tuple2> \
-        static constexpr auto NAME(const Tuple1 &tuple1, const Tuple2 &tuple2) \
+        static constexpr auto NAME(SIGNATURE Tuple1 &tuple1, SIGNATURE Tuple2 &tuple2) \
         noexcept(noexcept(NAME##Impl(tuple1, tuple2, std::make_index_sequence<std::tuple_size_v<Tuple1>>{}))) { \
             static_assert(std::tuple_size_v<Tuple1> == std::tuple_size_v<Tuple2>); \
             return NAME##Impl(tuple1, tuple2, std::make_index_sequence<std::tuple_size_v<Tuple1>>{}); \
         }
 
-#define BINARY_TUPLE_FOR_EACH_FOLD(OPERATION, COMBINATOR, NAME) BINARY_TUPLE_FOR_EACH( ( (OPERATION) COMBINATOR ...), NAME)
+#define BINARY_TUPLE_FOR_EACH_FOLD(SIGNATURE, OPERATION, COMBINATOR, NAME) BINARY_TUPLE_FOR_EACH(SIGNATURE, ( (OPERATION) COMBINATOR ...), NAME)
 
 #define TYPE_MAP_DEFAULT \
         template<typename> \
@@ -69,7 +71,7 @@
 namespace iterators {
     namespace impl {
         template<typename ...Ts>
-        struct Tuple;
+        struct ReferenceTuple;
 
         namespace traits {
             template<bool Cond, typename T>
@@ -111,11 +113,22 @@ namespace iterators {
             using dereference_t = typename dereference<T, is_dereferencible_v<T>>::type;
 
             template<typename T>
-            struct values{};
+            struct references{};
 
             template<typename ...Ts>
-            struct values<std::tuple<Ts...>> {
-                using type = Tuple<dereference_t<Ts>...>;
+            struct references<std::tuple<Ts...>> {
+                using type = ReferenceTuple<dereference_t<Ts>...>;
+            };
+
+            template<typename T>
+            using references_t = typename references<T>::type;
+
+            template<typename T>
+            struct values {};
+
+            template<typename ...Ts>
+            struct values<ReferenceTuple<Ts...>> {
+                using type = ReferenceTuple<std::remove_reference_t<Ts>...>;
             };
 
             template<typename T>
@@ -207,35 +220,54 @@ namespace iterators {
         }
 
         template<typename ...Ts>
-        struct Tuple : public std::tuple<Ts...> {
+        struct ReferenceTuple : public std::tuple<Ts...> {
             template<typename ...Us>
-            explicit Tuple(Us &&... args) : std::tuple<Ts...>(std::forward<Us>(args)...) {}
+            ReferenceTuple(ReferenceTuple<Us...> &&tuple) : std::tuple<Ts...>(moveFrom(std::move(tuple))) {}
 
-            Tuple(const Tuple &) = default;
-            Tuple(Tuple &&) = default;
-            Tuple &operator=(const Tuple &other) noexcept(noexcept(this->copyAssign(*this, other))) {
+            template<typename ...Us>
+            explicit ReferenceTuple(Us &&... args) : std::tuple<Ts...>(std::forward<Us>(args)...) {}
+
+            ReferenceTuple(const ReferenceTuple &) = default;
+            ReferenceTuple(ReferenceTuple &&) = default;
+
+            template<typename ...Us>
+            ReferenceTuple &
+            operator=(const ReferenceTuple<Us...> &other) noexcept(noexcept(this->copyAssign(*this, other))) {
                 copyAssign(*this, other);
                 return *this;
             }
 
-            Tuple &operator=(Tuple &&other) noexcept(noexcept(this->moveAssign(*this, other))) {
+            template<typename ...Us>
+            ReferenceTuple &
+            operator=(ReferenceTuple<Us...> &&other) noexcept(noexcept(this->moveAssign(*this, other))) {
                 moveAssign(*this, other);
                 return *this;
             }
 
-            ~Tuple() = default;
+            ~ReferenceTuple() = default;
 
         private:
-            BINARY_TUPLE_FOR_EACH_FOLD((ELEMENT1 = ELEMENT2), COMMA, copyAssign)
-            BINARY_TUPLE_FOR_EACH_FOLD((ELEMENT1 = std::move(ELEMENT2)), COMMA, moveAssign)
+            template<typename Tuple, std::size_t ...Idx>
+            static constexpr auto moveFromImpl(Tuple && t, std::index_sequence<Idx...>) {
+                return std::make_tuple(std::move(std::get<Idx>(t))...);
+            }
+
+            template<typename ...Us>
+            static constexpr auto moveFrom(ReferenceTuple<Us...> &&t) {
+                static_assert(sizeof...(Ts) == sizeof...(Us));
+                return moveFromImpl(t, std::make_index_sequence<sizeof...(Us)>{});
+            }
+
+            BINARY_TUPLE_FOR_EACH_FOLD(NON_CONST_SIGNATURE, ELEMENT1 = ELEMENT2, COMMA, copyAssign)
+            BINARY_TUPLE_FOR_EACH_FOLD(NON_CONST_SIGNATURE, ELEMENT1 = std::move(ELEMENT2), COMMA, moveAssign)
         };
 
         template<typename Iterators>
         class ZipIterator : public traits::iterator_category_from_value<traits::minimum_category_v<Iterators>> {
-            using ValueTuple = traits::values_t<Iterators>;
+            using ValueTuple = traits::references_t<Iterators>;
         public:
-            using value_type = ValueTuple;
-            using reference = value_type;
+            using reference = traits::references_t<Iterators>;
+            using value_type = traits::values_t<reference>;
             using pointer = void;
             using difference_type = std::ptrdiff_t;
 
@@ -355,8 +387,8 @@ namespace iterators {
                 return !(*this == other);
             }
 
-            auto operator*() const noexcept(traits::is_nothrow_dereferencible_v<Iterators>) {
-                return std::apply([](auto &&...it) { return ValueTuple(*it...); }, iterators);
+            reference operator*() const noexcept(traits::is_nothrow_dereferencible_v<Iterators>) {
+                return std::apply([](auto &&...it) { return reference(*it...); }, iterators);
             }
 
             constexpr auto getIterators() const noexcept -> const Iterators& {
@@ -364,13 +396,13 @@ namespace iterators {
             }
 
         private:
-            BINARY_TUPLE_FOR_EACH_FOLD(ELEMENT1 == ELEMENT2, ||, oneEqual)
+            BINARY_TUPLE_FOR_EACH_FOLD(CONST_SIGNATURE, ELEMENT1 == ELEMENT2, ||, oneEqual)
 
-            BINARY_TUPLE_FOR_EACH_FOLD(ELEMENT1 < ELEMENT2, &&, allLess)
+            BINARY_TUPLE_FOR_EACH_FOLD(CONST_SIGNATURE, ELEMENT1 < ELEMENT2, &&, allLess)
 
-            BINARY_TUPLE_FOR_EACH_FOLD(ELEMENT1 > ELEMENT2, &&, allGreater)
+            BINARY_TUPLE_FOR_EACH_FOLD(CONST_SIGNATURE, ELEMENT1 > ELEMENT2, &&, allGreater)
 
-            BINARY_TUPLE_FOR_EACH(std::min<difference_type>({ELEMENT1 - ELEMENT2 ...}), minDifference)
+            BINARY_TUPLE_FOR_EACH(CONST_SIGNATURE, std::min<difference_type>({ELEMENT1 - ELEMENT2 ...}), minDifference)
 
             Iterators iterators;
         };
@@ -630,11 +662,18 @@ namespace iterators {
 
 namespace std {
     template<typename ...Ts>
-    struct tuple_size<iterators::impl::Tuple<Ts...>> :  std::integral_constant<std::size_t, sizeof...(Ts)> {};
+    struct tuple_size<iterators::impl::ReferenceTuple<Ts...>> : std::integral_constant<std::size_t, sizeof...(Ts)> {};
 
     template<std::size_t Index, typename ...Ts>
-    struct tuple_element<Index, iterators::impl::Tuple<Ts...>> : tuple_element<Index, tuple<Ts...>> {};
+    struct tuple_element<Index, iterators::impl::ReferenceTuple<Ts...>> : tuple_element<Index, tuple < Ts...>> {};
 
+    template<typename ...Ts>
+    void swap(iterators::impl::ReferenceTuple<Ts...> a, iterators::impl::ReferenceTuple<Ts...> b) {
+        iterators::impl::ReferenceTuple<std::remove_reference_t<Ts>...> tmp(std::move(a));
+        a = std::move(b);
+        b = std::move(tmp);
+        std::cout << "custom swap" << std::endl;
+    }
 }
 
 #endif //ITERATORTOOLS_ITERATORS_HPP

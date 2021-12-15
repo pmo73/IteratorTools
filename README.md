@@ -31,7 +31,7 @@ for (auto [string, number] : zip(strings, numbers)) {
 The for loop uses so called `ZipIterator`s which point to tuples which in turn contain
 references to the container elements. Therefore, no copying occurs and manipulation of the
 container elements is possible. Observe that the structured binding captures by value
-(since the values are themselves references).
+(since the references are themselves references).
 
 If you want to prohibit manipulation, you can use `const_zip`
 ```c++
