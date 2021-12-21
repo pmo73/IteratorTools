@@ -175,6 +175,9 @@ namespace iterators {
             TYPE_MAP(std::forward_iterator_tag, 2)
             TYPE_MAP(std::bidirectional_iterator_tag, 3)
             TYPE_MAP(std::random_access_iterator_tag, 4)
+            #if __cplusplus > 201703L
+            TYPE_MAP(std::contiguous_iterator_tag, 5)
+            #endif
 
             TYPE_MAP_ALIAS
 
