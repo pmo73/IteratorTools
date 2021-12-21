@@ -823,7 +823,6 @@ namespace std {
         iterators::impl::ReferenceTuple<std::remove_reference_t<Ts>...> tmp(std::move(a));
         a = std::move(b);
         b = std::move(tmp);
-        std::cout << "custom swap" << std::endl;
     }
 }
 
