@@ -56,6 +56,10 @@ while (zipBegin != zipEnd) {
     ++zipBegin;
 }
 ```
+`ZipIterators` support the same operations as the least powerful underlying iterator.
+For example, if you zip a random access iterator (e.g. from `std::vector`) and a bidirectional
+iterator (e.g. from `std::list`), then the resulting `ZipIterator` will only support
+bidirectional iteration but no random access.
 
 As in Python, the shortest range decides the overall range:
 ```c++
