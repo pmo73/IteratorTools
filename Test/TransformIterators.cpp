@@ -206,3 +206,27 @@ TEST(TransformIterators, stl_algos) {
     std::sort(valueView.begin(), valueView.end());
     EXPECT_EQ(unordered, ordered);
 }
+
+TEST(TransformIterators, throwing_operators) {
+    std::array numbers{1, 2, 3};
+    auto throwingTIterator = iterators::transform(numbers.begin(), [](int) { throw std::runtime_error(""); });
+    EXPECT_THROW(*throwingTIterator, std::runtime_error);
+    BadIterator badIt;
+    auto badTransform = iterators::transform(badIt, [](int) noexcept { return 0; });
+    EXPECT_THROW(++badTransform, std::runtime_error);
+    EXPECT_THROW(badTransform++, std::runtime_error);
+    EXPECT_THROW(--badTransform, std::runtime_error);
+    EXPECT_THROW(badTransform--, std::runtime_error);
+    EXPECT_THROW(badTransform == badTransform, std::runtime_error);
+    EXPECT_THROW(badTransform != badTransform, std::runtime_error);
+    EXPECT_THROW(badTransform < badTransform, std::runtime_error);
+    EXPECT_THROW(badTransform > badTransform, std::runtime_error);
+    EXPECT_THROW(badTransform <= badTransform, std::runtime_error);
+    EXPECT_THROW(badTransform >= badTransform, std::runtime_error);
+    EXPECT_THROW(badTransform + 1, std::runtime_error);
+    EXPECT_THROW(1 + badTransform, std::runtime_error);
+    EXPECT_THROW(badTransform - 1, std::runtime_error);
+    EXPECT_THROW(badTransform[1], std::runtime_error);
+    EXPECT_THROW(*badTransform, std::runtime_error);
+    EXPECT_THROW(badTransform - badTransform, std::runtime_error);
+}
