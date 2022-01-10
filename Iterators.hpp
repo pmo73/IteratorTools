@@ -686,35 +686,35 @@ namespace iterators {
                 return true;
             }
 
-            constexpr bool operator<(const CounterIterator &other) noexcept {
+            constexpr bool operator<(const CounterIterator &other) const noexcept {
                 return counter < other.counter;
             }
 
-            constexpr bool operator<=(const CounterIterator &other) noexcept {
+            constexpr bool operator<=(const CounterIterator &other) const noexcept {
                 return counter <= other.counter;
             }
 
-            constexpr bool operator>(const CounterIterator &other) noexcept {
+            constexpr bool operator>(const CounterIterator &other) const noexcept {
                 return counter > other.counter;
             }
 
-            constexpr bool operator>=(const CounterIterator &other) noexcept {
+            constexpr bool operator>=(const CounterIterator &other) const noexcept {
                 return counter >= other.counter;
             }
 
-            constexpr bool operator<(Unreachable) noexcept {
+            constexpr bool operator<(Unreachable) const noexcept {
                 return true;
             }
 
-            constexpr bool operator<=(Unreachable) noexcept {
+            constexpr bool operator<=(Unreachable) const noexcept {
                 return true;
             }
 
-            constexpr bool operator>(Unreachable) noexcept {
+            constexpr bool operator>(Unreachable) const noexcept {
                 return false;
             }
 
-            constexpr bool operator>=(Unreachable) noexcept {
+            constexpr bool operator>=(Unreachable) const noexcept {
                 return false;
             }
 
