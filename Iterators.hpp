@@ -237,7 +237,7 @@ namespace iterators {
              */
             constexpr ZipIterator operator++(int) noexcept(traits::is_nothrow_incrementible_v<Iterators>) {
                 ZipIterator tmp = *this;
-                std::apply([](auto &&...it) { (++it, ...); }, iterators);
+                ++*this;
                 return tmp;
             }
 
@@ -264,7 +264,7 @@ namespace iterators {
             constexpr auto operator--(int) noexcept(traits::is_nothrow_decrementible_v<Iterators>)
                 -> std::enable_if_t<IsBidirectional, ZipIterator> {
                 ZipIterator tmp = *this;
-                std::apply([](auto &&...it) { (--it, ...); }, iterators);
+                --*this;
                 return tmp;
             }
 
