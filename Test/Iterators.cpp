@@ -117,6 +117,17 @@ TEST(Iterators, zip_iterator_manual) {
     EXPECT_EQ(counter, 3);
 }
 
+TEST(Iterators, zip_c_arrays_manual) {
+    using namespace iterators;
+    int numbers[] = {1, 2, 3};
+    const char * strings[] = {"a", "b", "c"};
+    strings[1] = "4";
+    auto zBegin = zip_i(numbers, strings);
+    zBegin[1] = std::tuple{10, "f"};
+    EXPECT_EQ(strings[1], "f");
+    EXPECT_EQ(numbers[1], 10);
+}
+
 TEST(Iterators, elements_no_copy) {
     using namespace iterators;
     std::vector<MustNotCopy> items;
