@@ -43,13 +43,13 @@ for (auto [string, number] : const_zip(strings, numbers)) {
     std::cout << string << " " << number << std::endl;
 }
 ```
-Additionally, using an overload of `zip`, the direct use of iterators is also possible:
+Additionally, you can use `zip_i` to manually zip iterators or pointers:
 ```c++
 using namespace iterators;
 std::list<std::string> strings{"a", "b", "c"};
 std::vector<int> numbers{1, 2, 3};
-auto zipBegin = zip(strings.begin(), numbers.begin());
-auto zipEnd = zip(strings.end(), numbers.end());
+auto zipBegin = zip_i(strings.begin(), numbers.begin());
+auto zipEnd = zip_i(strings.end(), numbers.end());
 while (zipBegin != zipEnd) {
     auto [s, num] = *zipBegin;
     // ...
