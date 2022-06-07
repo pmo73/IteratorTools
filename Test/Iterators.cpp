@@ -82,9 +82,9 @@ TEST(Iterators, zip_constness) {
     EXPECT_TRUE(std::is_const_v<std::remove_reference_t<decltype(std::get<0>(*zip(constStrings, numbers).begin()))>>);
     EXPECT_FALSE(std::is_const_v<std::remove_reference_t<decltype(std::get<1>(*zip(constStrings, numbers).begin()))>>);
     EXPECT_TRUE(
-            std::is_const_v<std::remove_reference_t<decltype(std::get<0>(*zip(strings.cbegin(), numbers.begin())))>>);
+            std::is_const_v<std::remove_reference_t<decltype(std::get<0>(*zip_i(strings.cbegin(), numbers.begin())))>>);
     EXPECT_FALSE(
-            std::is_const_v<std::remove_reference_t<decltype(std::get<1>(*zip(strings.cbegin(), numbers.begin())))>>);
+            std::is_const_v<std::remove_reference_t<decltype(std::get<1>(*zip_i(strings.cbegin(), numbers.begin())))>>);
     EXPECT_FALSE(std::is_const_v<std::remove_reference_t<decltype(std::get<0>(*zipView.begin()))>>);
     EXPECT_TRUE(std::is_const_v<std::remove_reference_t<decltype(std::get<0>(*constZipView.begin()))>>);
 }
@@ -96,7 +96,8 @@ TEST(Iterators, zip_iterator_types) {
     auto zipView = const_zip(forward, backward);
     constexpr bool res = std::is_same_v<decltype(zipView.begin()), decltype(zipView.end())>;
     EXPECT_TRUE(res);
-    constexpr bool res1 = std::is_same_v<decltype(zip(forward.begin(), backward.begin())), decltype(zip(forward.end(), backward.end()))>;
+    constexpr bool res1 = std::is_same_v<decltype(zip_i(forward.begin(), backward.begin())),
+            decltype(zip_i(forward.end(), backward.end()))>;
     EXPECT_TRUE(res1);
 }
 
@@ -104,8 +105,8 @@ TEST(Iterators, zip_iterator_manual) {
     using namespace iterators;
     std::list<int> forward {1, 2, 3};
     std::vector<int> backward{3, 2, 1};
-    auto start = zip(forward.cbegin(), backward.cbegin());
-    auto end = zip(forward.cend(), backward.cend());
+    auto start = zip_i(forward.cbegin(), backward.cbegin());
+    auto end = zip_i(forward.cend(), backward.cend());
     std::size_t counter = 0;
     while (start != end) {
         EXPECT_EQ(std::get<0>(*start) + std::get<1>(*start), 4);
@@ -278,10 +279,10 @@ TEST(Iterators, type_traits) {
     std::array<int, 1> array;
     std::list<int> list;
     std::unordered_map<int, int> map;
-    auto zipIt = zip(array.begin(), list.begin());
+    auto zipIt = zip_i(array.begin(), list.begin());
     constexpr bool correctCategory = std::is_same_v<decltype(zipIt)::iterator_category, std::bidirectional_iterator_tag>;
     EXPECT_TRUE(correctCategory);
-    auto zipIt1 = zip(array.begin(), map.begin());
+    auto zipIt1 = zip_i(array.begin(), map.begin());
     constexpr bool correctCategory1 = std::is_same_v<decltype(zipIt1)::iterator_category, std::forward_iterator_tag>;
     EXPECT_TRUE(correctCategory1);
 }
@@ -290,7 +291,7 @@ TEST(Iterators, bidirectional_operators) {
     using namespace iterators;
     std::array numbers{1, 2, 3, 4};
     std::list<std::string> strings{"a", "b", "c"};
-    auto zIt = zip(numbers.begin(), strings.begin());
+    auto zIt = zip_i(numbers.begin(), strings.begin());
     zIt++;
     auto [n, s] =*zIt;
     EXPECT_EQ(n, 2);
@@ -305,7 +306,7 @@ TEST(Iterators, post_increment_and_decrement) {
     using namespace iterators;
     std::array numbers{1, 2, 3, 4};
     std::list<std::string> strings{"a", "b", "c"};
-    auto zIt = zip(numbers.begin(), strings.begin());
+    auto zIt = zip_i(numbers.begin(), strings.begin());
     auto [n, s] = *++zIt;
     EXPECT_EQ(n, 2);
     EXPECT_EQ(s, "b");
@@ -330,13 +331,13 @@ TEST(Iterators, random_access_operators) {
     using namespace iterators;
     std::array numbers{1, 2, 3, 4};
     std::vector<std::string> strings{"a", "b", "c"};
-    const auto zBegin = zip(numbers.begin(), strings.begin());
-    const auto zEnd = zip(numbers.end(), strings.end());
+    const auto zBegin = zip_i(numbers.begin(), strings.begin());
+    const auto zEnd = zip_i(numbers.end(), strings.end());
     EXPECT_EQ(*(zBegin + 2), zBegin[2]);
     EXPECT_LT(zBegin, zEnd);
     auto tmp = zBegin;
     tmp += 2;
-    EXPECT_EQ(zBegin, zip(numbers.begin(), strings.begin()));
+    EXPECT_EQ(zBegin, zip_i(numbers.begin(), strings.begin()));
     EXPECT_EQ(*tmp, zBegin[2]);
     EXPECT_EQ(zBegin + 3, zEnd);
     EXPECT_LE(zBegin + 3, zEnd);
@@ -349,8 +350,8 @@ TEST(Iterators, random_access_operators) {
 TEST(Iterators, stl_algos) {
     using namespace iterators;
     std::array numbers{4, 2, 3, 1, 0};
-    auto zBegin = zip(numbers.begin(), numbers.rbegin());
-    auto zEnd = zip(numbers.end(), numbers.rend());
+    auto zBegin = zip_i(numbers.begin(), numbers.rbegin());
+    auto zEnd = zip_i(numbers.end(), numbers.rend());
     auto res = std::find_if(zBegin, zEnd, [](const auto &tuple) { return std::get<0>(tuple) == std::get<1>(tuple); });
     ASSERT_NE(res, zEnd);
     EXPECT_EQ(std::get<0>(*res), 3);
@@ -378,7 +379,7 @@ TEST(Iterators, noexcept_throwing_iterator) {
     std::array numbers{1, 2, 3};
     BadIterator badIt;
     // zip order is necessary so the comparison operators of BadIterator actually get called
-    auto zipIt = zip(badIt, numbers.begin());
+    auto zipIt = zip_i(badIt, numbers.begin());
     EXPECT_THROW(++zipIt, std::runtime_error);
     EXPECT_THROW(zipIt++, std::runtime_error);
     EXPECT_THROW(--zipIt, std::runtime_error);

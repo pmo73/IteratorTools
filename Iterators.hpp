@@ -656,8 +656,8 @@ namespace iterators {
      * for example, zipping a random access iterator and a bidirectional iterator only yields a bidirectional
      * ZipIterator
      */
-    template<typename ...Iterators, std::enable_if_t<(impl::traits::is_dereferencible_v<Iterators> && ...), int> = 0>
-    constexpr auto zip(Iterators ...iterators) -> impl::ZipIterator<std::tuple<Iterators...>> {
+    template<typename ...Iterators>
+    constexpr auto zip_i(Iterators ...iterators) -> impl::ZipIterator<std::tuple<Iterators...>> {
         return impl::ZipIterator<std::tuple<Iterators...>>(std::move(iterators)...);
     }
 
@@ -669,7 +669,7 @@ namespace iterators {
      * @param iterable Arbitrary number of containers
      * @return zip-container class that provides begin and end members to be used in range based for-loops
      */
-    template<typename ...Iterable, std::enable_if_t<(impl::traits::is_container_v<Iterable> && ...), int> = 0>
+    template<typename ...Iterable>
     constexpr auto zip(Iterable &&...iterable) {
         return impl::ZipContainer<Iterable...>(std::forward<Iterable>(iterable)...);
     }
