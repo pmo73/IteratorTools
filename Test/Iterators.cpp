@@ -7,6 +7,8 @@
 #include "Iterators.hpp"
 #include "utils.hpp"
 
+#define UNUSED(x) ((void) (x))
+
 TEST(Iterators, zip_elements) {
     using namespace iterators;
     std::list<std::string> strings{"a", "b", "c"};
@@ -395,12 +397,12 @@ TEST(Iterators, noexcept_throwing_iterator) {
     EXPECT_THROW(zipIt++, std::runtime_error);
     EXPECT_THROW(--zipIt, std::runtime_error);
     EXPECT_THROW(zipIt--, std::runtime_error);
-    EXPECT_THROW(zipIt == zipIt, std::runtime_error);
-    EXPECT_THROW(zipIt != zipIt, std::runtime_error);
-    EXPECT_THROW(zipIt < zipIt, std::runtime_error);
-    EXPECT_THROW(zipIt > zipIt, std::runtime_error);
-    EXPECT_THROW(zipIt <= zipIt, std::runtime_error);
-    EXPECT_THROW(zipIt >= zipIt, std::runtime_error);
+    EXPECT_THROW(UNUSED(zipIt == zipIt), std::runtime_error);
+    EXPECT_THROW(UNUSED(zipIt != zipIt), std::runtime_error);
+    EXPECT_THROW(UNUSED(zipIt < zipIt), std::runtime_error);
+    EXPECT_THROW(UNUSED(zipIt > zipIt), std::runtime_error);
+    EXPECT_THROW(UNUSED(zipIt <= zipIt), std::runtime_error);
+    EXPECT_THROW(UNUSED(zipIt >= zipIt), std::runtime_error);
     EXPECT_THROW(zipIt + 1, std::runtime_error);
     EXPECT_THROW(1 + zipIt, std::runtime_error);
     EXPECT_THROW(zipIt - 1, std::runtime_error);
