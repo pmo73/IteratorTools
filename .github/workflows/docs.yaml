@@ -12,10 +12,15 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v3
+      - name: install doxygen
+        run: sudo apt-get -y doxygen
       - name: create output dir
         run: mkdir -p $DOCS_OUT_DIR
-      - uses: DenverCoder1/doxygen-github-pages-action@v1.1.0
+      - name: run doxygen
+        run: doxygen .github/workflows/Doxyfile
+      - name: deploy
+        uses: JamesIves/github-pages-deploy-action@v4
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          config_file: .github/workflows/Doxyfile
           folder: $DOCS_OUT_DIR
+          branch: gh-pages
