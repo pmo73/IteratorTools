@@ -11,6 +11,9 @@ case of `zip` and uses a "counting container" (similar to `std::ranges::iota`) t
 an index. Additionally, const-versions exist which do not allow the manipulation of the
 container elements.
 
+## Documentation
+[Doxygen](https://timmifixedit.github.io/IteratorTools/html/index.html)
+
 ## Code Examples
 The syntax is mostly similar to Python:
 ```c++
