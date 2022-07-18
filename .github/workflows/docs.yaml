@@ -5,11 +5,17 @@ on:
     branches: [ "Doxygen" ]
   workflow_dispatch:
 
+env:
+  DOCS_OUT_DIR: docs/html
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      - name: create output dir
+        run: mkdir -p $DOCS_OUT_DIR
       - uses: DenverCoder1/doxygen-github-pages-action@v1.1.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           config_file: .github/workflows/Doxyfile
+          folder: $DOCS_OUT_DIR
