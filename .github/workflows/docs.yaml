@@ -16,11 +16,11 @@ jobs:
       - name: install doxygen
         run: sudo apt-get update && sudo apt-get install -y doxygen
       - name: create output dir
-        run: mkdir -p $DOCS_OUT_DIR
+        run: mkdir -p ${{ env.DOCS_OUT_DIR }}
       - name: run doxygen
         run: doxygen .github/workflows/Doxyfile
       - name: deploy
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          folder: $DOCS_OUT_DIR
+          folder: ${{ env.DOCS_OUT_DIR }}
           branch: gh-pages
