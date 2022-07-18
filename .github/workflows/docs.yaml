@@ -2,7 +2,7 @@ name: documentation
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "ConfigureDoxygen" ]
   workflow_dispatch:
 
 env:
@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: install doxygen
-        run: sudo apt-get update && sudo apt-get install -y doxygen
+        run: sudo apt-get update && sudo apt-get install -y doxygen graphviz
       - name: create output dir
         run: mkdir -p ${{ env.DOCS_OUT_DIR }}
       - name: run doxygen
