@@ -429,3 +429,27 @@ TEST(Iterators, compiletime_foreach) {
     constexpr auto res = dot(x, y);
     EXPECT_DOUBLE_EQ(res, 1337.1337);
 }
+
+TEST(Iterators, compiletime_iterator) {
+    using namespace iterators;
+    static constexpr int x[] = {1, 2, 3, 4};
+    static constexpr double y[] = {3, 2, 1, 4};
+    constexpr auto res = zip(x, y).begin()[2];
+    EXPECT_EQ(std::get<0>(res), 3);
+    EXPECT_EQ(std::get<1>(res), 1);
+    constexpr bool less = zip_i(x + 2, y + 1) < zip_i(x + 3, y + 3);
+    EXPECT_TRUE(less);
+    constexpr bool greater = zip_i(x + 2, y + 1) > zip_i(x + 1, y);
+    EXPECT_TRUE(greater);
+    constexpr auto diff = zip_i(x + 2, y + 1) - zip_i(x + 1, y + 1);
+    EXPECT_EQ(diff, 0);
+    constexpr auto minus = zip_i(x + 2, y + 3) - 1;
+    constexpr auto plus = zip_i(x, y + 1) + 1;
+    constexpr bool equal = plus == minus;
+    EXPECT_TRUE(equal);
+    constexpr auto plusComp = zip_i(x + 1, y) += 1;
+    constexpr auto minusComp = zip_i(x + 3, y + 2) -= 1;
+    EXPECT_EQ(plusComp, minusComp);
+    constexpr bool decrementEq = --zip_i(x + 1, y + 3) == zip_i(x, y + 2);
+    EXPECT_TRUE(decrementEq);
+}
