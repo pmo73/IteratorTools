@@ -9,6 +9,17 @@
 
 #define UNUSED(x) ((void) (x))
 
+template<typename Vec1, typename Vec2>
+constexpr auto dot(const Vec1 &x, const Vec2 &y) {
+    using T = decltype(*std::begin(x) * *std::begin(y));
+    T res = 0;
+    for (auto [v1, v2] : iterators::zip(x, y)) {
+        res += v1 * v2;
+    }
+
+    return res;
+}
+
 TEST(Iterators, zip_elements) {
     using namespace iterators;
     std::list<std::string> strings{"a", "b", "c"};
@@ -409,4 +420,12 @@ TEST(Iterators, noexcept_throwing_iterator) {
     EXPECT_THROW(zipIt[1], std::runtime_error);
     EXPECT_THROW(*zipIt, std::runtime_error);
     EXPECT_THROW(zipIt - zipIt, std::runtime_error);
+}
+
+TEST(Iterators, compiletime_foreach) {
+    using namespace iterators;
+    constexpr int x[4] = {3, 2, 1, 5};
+    constexpr double y[4] = {10.21, 100.0014, 221.3009, 177.04};
+    constexpr auto res = dot(x, y);
+    EXPECT_DOUBLE_EQ(res, 1337.1337);
 }
