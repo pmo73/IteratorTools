@@ -1,4 +1,5 @@
 /**
+ * @file Iterators.hpp
  * @author tim Luchterhand
  * @date 10.09.21
  * @brief This file contains the definitions of Python-like zip- and enumerate-functions. They can be used in range
@@ -66,8 +67,20 @@
         template<std::size_t V>                                                 \
         using value_to_type_t = typename value_to_type<V>::type;
 
+/**
+ * @brief namespace containing zip and enumerate functions
+ */
 namespace iterators {
+
+    /**
+     * @brief namespace containing structures and helpers used to implement zip and enumerate.
+     * Normally you should not need to use any of its members directly
+     */
     namespace impl {
+
+        /**
+         * @brief namespace containing type traits used in implementation of zip and enumerate
+         */
         namespace traits {
             template<bool Cond, typename T>
             using reference_if_t = std::conditional_t<Cond, std::add_lvalue_reference_t<T>, T>;
