@@ -20,6 +20,21 @@ constexpr auto dot(const Vec1 &x, const Vec2 &y) {
     return res;
 }
 
+template<std::size_t N, typename T>
+constexpr T initArrayAndSum(T start, T increment) {
+    T numbers[N] = {0};
+    for (auto [number, i] : iterators::enumerate(numbers, start, increment)) {
+        i = number;
+    }
+
+    T sum = 0;
+    for (auto i : numbers) {
+        sum += i;
+    }
+
+    return sum;
+}
+
 TEST(Iterators, zip_elements) {
     using namespace iterators;
     std::list<std::string> strings{"a", "b", "c"};
@@ -428,6 +443,11 @@ TEST(Iterators, compiletime_foreach) {
     constexpr double y[4] = {10.21, 100.0014, 221.3009, 177.04};
     constexpr auto res = dot(x, y);
     EXPECT_DOUBLE_EQ(res, 1337.1337);
+}
+
+TEST(Iterators, compiletime_enumerate) {
+    constexpr auto sum = initArrayAndSum<4>(-1, -1);
+    EXPECT_EQ(sum, -10);
 }
 
 TEST(Iterators, compiletime_iterator) {

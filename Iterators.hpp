@@ -634,7 +634,7 @@ namespace iterators {
         struct CounterContainer {
             explicit constexpr CounterContainer(T start, T increment) noexcept: start(start), increment(increment) {}
 
-            [[nodiscard]] CounterIterator<T> begin() const noexcept {
+            [[nodiscard]] constexpr CounterIterator<T> begin() const noexcept {
                 return CounterIterator<T>(start, increment);
             }
 
