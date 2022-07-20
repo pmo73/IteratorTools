@@ -9,6 +9,32 @@
 
 #define UNUSED(x) ((void) (x))
 
+template<typename Vec1, typename Vec2>
+constexpr auto dot(const Vec1 &x, const Vec2 &y) {
+    using T = decltype(*std::begin(x) * *std::begin(y));
+    T res = 0;
+    for (auto [v1, v2] : iterators::zip(x, y)) {
+        res += v1 * v2;
+    }
+
+    return res;
+}
+
+template<std::size_t N, typename T>
+constexpr T initArrayAndSum(T start, T increment) {
+    T numbers[N] = {0};
+    for (auto [number, i] : iterators::enumerate(numbers, start, increment)) {
+        i = number;
+    }
+
+    T sum = 0;
+    for (auto i : numbers) {
+        sum += i;
+    }
+
+    return sum;
+}
+
 TEST(Iterators, zip_elements) {
     using namespace iterators;
     std::list<std::string> strings{"a", "b", "c"};
@@ -409,4 +435,41 @@ TEST(Iterators, noexcept_throwing_iterator) {
     EXPECT_THROW(zipIt[1], std::runtime_error);
     EXPECT_THROW(*zipIt, std::runtime_error);
     EXPECT_THROW(zipIt - zipIt, std::runtime_error);
+}
+
+TEST(Iterators, compiletime_foreach) {
+    using namespace iterators;
+    constexpr int x[4] = {3, 2, 1, 5};
+    constexpr double y[4] = {10.21, 100.0014, 221.3009, 177.04};
+    constexpr auto res = dot(x, y);
+    EXPECT_DOUBLE_EQ(res, 1337.1337);
+}
+
+TEST(Iterators, compiletime_enumerate) {
+    constexpr auto sum = initArrayAndSum<4>(-1, -1);
+    EXPECT_EQ(sum, -10);
+}
+
+TEST(Iterators, compiletime_iterator) {
+    using namespace iterators;
+    static constexpr int x[] = {1, 2, 3, 4};
+    static constexpr double y[] = {3, 2, 1, 4};
+    constexpr auto res = zip(x, y).begin()[2];
+    EXPECT_EQ(std::get<0>(res), 3);
+    EXPECT_EQ(std::get<1>(res), 1);
+    constexpr bool less = zip_i(x + 2, y + 1) < zip_i(x + 3, y + 3);
+    EXPECT_TRUE(less);
+    constexpr bool greater = zip_i(x + 2, y + 1) > zip_i(x + 1, y);
+    EXPECT_TRUE(greater);
+    constexpr auto diff = zip_i(x + 2, y + 1) - zip_i(x + 1, y + 1);
+    EXPECT_EQ(diff, 0);
+    constexpr auto minus = zip_i(x + 2, y + 3) - 1;
+    constexpr auto plus = zip_i(x, y + 1) + 1;
+    constexpr bool equal = plus == minus;
+    EXPECT_TRUE(equal);
+    constexpr auto plusComp = zip_i(x + 1, y) += 1;
+    constexpr auto minusComp = zip_i(x + 3, y + 2) -= 1;
+    EXPECT_EQ(plusComp, minusComp);
+    constexpr bool decrementEq = --zip_i(x + 1, y + 3) == zip_i(x, y + 2);
+    EXPECT_TRUE(decrementEq);
 }

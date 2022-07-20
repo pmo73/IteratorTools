@@ -452,7 +452,7 @@ namespace iterators {
              * Dereferences all underlying iterators and returns a tuple of the resulting iterator reference types
              * @return
              */
-            auto operator*() const noexcept(traits::is_nothrow_dereferencible_v<Iterators>) {
+            constexpr auto operator*() const noexcept(traits::is_nothrow_dereferencible_v<Iterators>) {
                 return std::apply([](auto &&...it) { return ValueTuple(*it...); }, iterators);
             }
 
@@ -492,25 +492,26 @@ namespace iterators {
             using CSentinelTuple = Sentinels<true>;
         public:
             template<typename ...Container>
-            explicit ZipContainer(Container &&...containers) : containers(std::forward<Container>(containers)...) {}
+            constexpr explicit ZipContainer(Container &&...containers) :
+                containers(std::forward<Container>(containers)...) {}
 
 
-            auto begin() {
+            constexpr auto begin() {
                 return ZipIterator<IteratorTuple>(
                         std::apply([](auto &&...c) { return IteratorTuple(std::begin(c)...); }, containers));
             }
 
-            auto end() {
+            constexpr auto end() {
                 return ZipIterator<SentinelTuple>(
                         std::apply([](auto &&...c) { return SentinelTuple(std::end(c)...); }, containers));
             }
 
-            auto begin() const {
+            constexpr auto begin() const {
                 return ZipIterator<CIteratorTuple>(
                         std::apply([](auto &&...c) { return CIteratorTuple(std::begin(c)...); }, containers));
             }
 
-            auto end() const {
+            constexpr auto end() const {
                 return ZipIterator<CSentinelTuple>(
                         std::apply([](auto &&...c) { return CSentinelTuple(std::end(c)...); }, containers));
             }
@@ -633,7 +634,7 @@ namespace iterators {
         struct CounterContainer {
             explicit constexpr CounterContainer(T start, T increment) noexcept: start(start), increment(increment) {}
 
-            [[nodiscard]] CounterIterator<T> begin() const noexcept {
+            [[nodiscard]] constexpr CounterIterator<T> begin() const noexcept {
                 return CounterIterator<T>(start, increment);
             }
 
