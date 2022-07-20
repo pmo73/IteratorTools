@@ -1,3 +1,4 @@
+[![unit tests](https://github.com/Timmifixedit/IteratorTools/actions/workflows/unit_tests.yml/badge.svg)](https://github.com/Timmifixedit/IteratorTools/actions/workflows/unit_tests.yml)
 # Python-like Zip and Enumerate Iterators
 C++-implementation of Python-like zip- and enumerate-iterators which can be used in range-based
 for loops along with structured bindings to iterate over multiple containers at the same
