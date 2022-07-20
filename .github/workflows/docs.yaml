@@ -2,7 +2,7 @@ name: documentation
 
 on:
   push:
-    branches: [ "ConfigureDoxygen" ]
+    branches: [ "master" ]
   workflow_dispatch:
 
 env:
