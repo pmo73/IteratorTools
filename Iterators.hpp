@@ -755,16 +755,17 @@ namespace iterators {
              * @param other
              * @return true if counter of left and right hand side are not equal
              */
-            constexpr bool operator!=(const CounterIterator &other) const noexcept {
+            template<typename It>
+            constexpr bool operator!=(const It &other) const noexcept {
                 return !(*this == other);
             }
 
-            /**
-             * Equality comparison with unreachable sentinel
-             * @return false
-             */
-            constexpr bool operator!=(Unreachable) const noexcept {
+            constexpr bool operator<(Unreachable) const noexcept {
                 return true;
+            }
+
+            constexpr bool operator>(Unreachable) const noexcept {
+                return false;
             }
 
             /**
@@ -798,7 +799,8 @@ namespace iterators {
              * @param other
              * @return true if left hand side is not greater than right hand side
              */
-            constexpr bool operator<=(const CounterIterator &other) const noexcept {
+            template<typename It>
+            constexpr bool operator<=(const It &other) const noexcept {
                 return !(*this > other);
             }
 
@@ -807,7 +809,8 @@ namespace iterators {
              * @param other
              * @return true if left hand side is not less than right hand side
              */
-            constexpr bool operator>=(const CounterIterator &other) const noexcept {
+            template<typename It>
+            constexpr bool operator>=(const It &other) const noexcept {
                 return !(*this < other);
             }
 
