@@ -220,6 +220,99 @@ namespace iterators {
         }
 
         /**
+         * @brief CRTP-class that provides additional operators synthesized from basic operators
+         * @details @copybrief
+         *
+         * Adds the following operators
+         * - postfix increment and decrement (requires the respective prefix operators)
+         * - inequality comparison (requires operator==)
+         * - less than or equal comparison (requires operator>)
+         * - greater than or equal comparison (requires operator<)
+         * - array subscript operator[] (requires operator+ and dereference operator)
+         * @tparam Impl
+         */
+        template<typename Impl>
+        struct SynthesizedOperators {
+            /**
+             * Inequality comparison
+             * @tparam T
+             * @param other
+             * @return true if this is not equal to other
+             */
+            template<typename T>
+            constexpr bool operator!=(const T &other) const noexcept(noexcept(std::declval<Impl>() == other)) {
+                return !(getImpl() == other);
+            }
+
+            /**
+             * Less than or equal comparison
+             * @tparam T
+             * @param other
+             * @return true if this is not greater than other
+             */
+            template<typename T>
+            constexpr bool operator<=(const T& other) const noexcept(noexcept(std::declval<Impl>() > other)) {
+                return !(getImpl() > other);
+            }
+
+            /**
+             * Greater than or equal comparison
+             * @tparam T
+             * @param other
+             * @return true if this is not less than other
+             */
+            template<typename T>
+            constexpr bool operator>=(const T& other) const noexcept(noexcept(std::declval<Impl>() < other)) {
+                return !(getImpl() < other);
+            }
+
+            /**
+             * Array subscript operator
+             * @param n index
+             * @return *(*this + n)
+             */
+            constexpr auto operator[](typename std::ptrdiff_t n) const
+            noexcept(noexcept(*(std::declval<Impl>() + n))) {
+                return *(getImpl() + n);
+            }
+
+            /**
+             * Postfix increment. Synthesized from prefix increment
+             * @return
+             */
+            constexpr Impl operator++(int)
+            noexcept(noexcept(++std::declval<Impl>()) && std::is_nothrow_copy_constructible_v<Impl>) {
+                auto tmp = getImpl();
+                this->getImpl().operator++();
+                return tmp;
+            }
+
+            /**
+             * Postfix decrement. Synthesized from prefix decrement
+             * @return
+             */
+            constexpr Impl operator--(int)
+            noexcept(noexcept(--std::declval<Impl>()) && std::is_nothrow_copy_constructible_v<Impl>) {
+                auto tmp = getImpl();
+                this->getImpl().operator--();
+                return tmp;
+            }
+
+        private:
+            constexpr Impl &getImpl() noexcept {
+                return static_cast<Impl &>(*this);
+            }
+
+            constexpr const Impl &getImpl() const noexcept {
+                return static_cast<const Impl &>(*this);
+            }
+
+            SynthesizedOperators() = default;
+            friend Impl;
+        };
+
+
+        /**
          * @brief Class combining multiple iterators into one. Use it to iterate over multiple ranges at the same time.
          * @details @copybrief
          * ZipIterators only support the operators of the least powerful underling iterator. Zipping a random access
