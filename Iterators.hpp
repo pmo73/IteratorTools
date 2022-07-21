@@ -74,7 +74,7 @@ namespace iterators {
 
     /**
      * @brief namespace containing structures and helpers used to implement zip and enumerate.
-     * Normally you should not need to use any of its members directly
+     * Normally there is no need to use any of its members directly
      */
     namespace impl {
 
@@ -219,11 +219,25 @@ namespace iterators {
             constexpr inline bool is_bidirectional_v = is_bidirectional<T>::value;
         }
 
+        /**
+         * @brief Class combining multiple iterators into one. Use it to iterate over multiple ranges at the same time.
+         * @details @copybrief
+         * ZipIterators only support the operators of the least powerful underling iterator. Zipping a random access
+         * iterator (e.g. from std::vector) and a bidirectional iterator (e.g. from std::list) results in a
+         * bidirectional iterator. ZipIterators return a tuple of references to the range elements. When using
+         * structured bindings, no additional reference binding is necessary.
+         *
+         * Let ```z``` be a ZipIterator composed from two ```std::vector<int>```
+         * ```
+         * auto [val1, val2] = *z; // val1 and val2 are references to the vector elements
+         * val1 = 17; // this will change the respective value in the first vector
+         * ```
+         * @tparam Iterators Underlying iterator types
+         */
         template<typename Iterators>
         class ZipIterator : public traits::iterator_category_from_value<traits::minimum_category_v<Iterators>> {
-            using ValueTuple = traits::values_t<Iterators>;
         public:
-            using value_type = ValueTuple;
+            using value_type = traits::values_t<Iterators>;
             using reference = value_type;
             using pointer = void;
             using difference_type = std::ptrdiff_t;
@@ -255,6 +269,13 @@ namespace iterators {
             }
 
             /**
+             * @name bidirectional iteration
+             * @brief the following operators are only available if all underlying iterators support bidirectional
+             * access
+             */
+            ///@{
+
+            /**
              * Decrements all underlying iterators by one. Only available if all iterators support at least
              * bidirectional access
              * @tparam IsBidirectional
@@ -280,6 +301,15 @@ namespace iterators {
                 --*this;
                 return tmp;
             }
+
+            ///@}
+
+            /**
+             * @name random access operators
+             * @brief the following operators are only available if all underlying iterators support random access
+             *
+             */
+            ///@{
 
             /**
              * Compound assignment increment. Increments all underlying iterators by n. Only available if all underlying
@@ -436,6 +466,8 @@ namespace iterators {
                 return !(*this < other);
             }
 
+            ///@}
+
             /**
              * Returns true if at least one underlying iterator compares equal to the corresponding iterator from
              * other.
@@ -466,7 +498,7 @@ namespace iterators {
              * @return
              */
             constexpr auto operator*() const noexcept(traits::is_nothrow_dereferencible_v<Iterators>) {
-                return std::apply([](auto &&...it) { return ValueTuple(*it...); }, iterators);
+                return std::apply([](auto &&...it) { return value_type(*it...); }, iterators);
             }
 
             /**
@@ -489,8 +521,16 @@ namespace iterators {
             Iterators iterators;
         };
 
+        /**
+         * @brief Zip-view that provides begin() and end() member functions. Use to loop over multiple ranges at the
+         * same time using ranged based for-loops.
+         * @details @copybrief
+         * Ranges are captured by lvalue reference, no copying occurs. Temporaries are allowed as well in which case
+         * storage is moved into the zip-view.
+         * @tparam Iterable Underlying range types
+         */
         template<typename ...Iterable>
-        struct ZipContainer {
+        struct ZipView {
         private:
             using ContainerTuple = std::tuple<Iterable...>;
             template<bool Const>
@@ -504,26 +544,46 @@ namespace iterators {
             using SentinelTuple = Sentinels<false>;
             using CSentinelTuple = Sentinels<true>;
         public:
+            /**
+             * CTor. Binds reference to ranges or takes ownership in case of rvalue references
+             * @tparam Container range types
+             * @param containers arbitrary number of ranges
+             */
             template<typename ...Container>
-            constexpr explicit ZipContainer(Container &&...containers) :
+            constexpr explicit ZipView(Container &&...containers) :
                 containers(std::forward<Container>(containers)...) {}
 
 
+            /**
+            * Returns a ZipIterator to the first elements of the underlying ranges
+            * @return ZipIterator created by invoking std::begin on all underlying ranges
+            */
             constexpr auto begin() {
                 return ZipIterator<IteratorTuple>(
                         std::apply([](auto &&...c) { return IteratorTuple(std::begin(c)...); }, containers));
             }
 
+            /**
+            * Returns a ZipIterator to the elements following the last elements of the the underlying ranges
+            * @return ZipIterator created by invoking std::end on all underlying ranges
+            */
             constexpr auto end() {
                 return ZipIterator<SentinelTuple>(
                         std::apply([](auto &&...c) { return SentinelTuple(std::end(c)...); }, containers));
             }
 
+            /**
+             * @copydoc ZipView::begin()
+             * @note returns a ZipIterator that does not allow changing the ranges' elements
+             */
             constexpr auto begin() const {
                 return ZipIterator<CIteratorTuple>(
                         std::apply([](auto &&...c) { return CIteratorTuple(std::begin(c)...); }, containers));
             }
 
+            /**
+             * @copydoc ZipView::end()
+             */
             constexpr auto end() const {
                 return ZipIterator<CSentinelTuple>(
                         std::apply([](auto &&...c) { return CSentinelTuple(std::end(c)...); }, containers));
@@ -643,14 +703,30 @@ namespace iterators {
             T increment;
         };
 
+        /**
+         * @brief Represents an infinite range of numbers
+         * @tparam T type of number range
+         */
         template<typename T = std::size_t>
-        struct CounterContainer {
-            explicit constexpr CounterContainer(T start, T increment) noexcept: start(start), increment(increment) {}
+        struct CounterRange {
+            /**
+             * CTor
+             * @param start start of the range
+             * @param increment step size
+             * @note Depending on the template type T, increment can also be negative.
+             */
+            explicit constexpr CounterRange(T start, T increment) noexcept: start(start), increment(increment) {}
 
+            /**
+             * @return CounterIterator representing the beginning of the sequence
+             */
             [[nodiscard]] constexpr CounterIterator<T> begin() const noexcept {
                 return CounterIterator<T>(start, increment);
             }
 
+            /**
+             * @return Sentinel object representing the unreachable end of the sequence
+             */
             [[nodiscard]] static constexpr Unreachable end() noexcept {
                 return Unreachable{};
             }
@@ -662,13 +738,14 @@ namespace iterators {
     }
 
     /**
-     * Function that is used to create a ZipIterator from an arbitrary number of iterators
+     * Function that is used to create a impl::ZipIterator from an arbitrary number of iterators
      * @tparam Iterators type of iterators
      * @param iterators arbitrary number of iterators
-     * @return ZipIterator
+     * @return impl::ZipIterator
      * @note ZipIterators have the same iterator category as the least powerful underlying operator. This means that
      * for example, zipping a random access iterator and a bidirectional iterator only yields a bidirectional
-     * ZipIterator
+     * impl::ZipIterator
+     * @relatesalso impl::ZipIterator
      */
     template<typename ...Iterators>
     constexpr auto zip_i(Iterators ...iterators) -> impl::ZipIterator<std::tuple<Iterators...>> {
@@ -682,21 +759,21 @@ namespace iterators {
      * @tparam Iterable Container types that support iteration
      * @param iterable Arbitrary number of containers
      * @return zip-container class that provides begin and end members to be used in range based for-loops
+     * @relatesalso impl::ZipView
      */
     template<typename ...Iterable>
     constexpr auto zip(Iterable &&...iterable) {
-        return impl::ZipContainer<Iterable...>(std::forward<Iterable>(iterable)...);
+        return impl::ZipView<Iterable...>(std::forward<Iterable>(iterable)...);
     }
 
     /**
      * Zip variant that does not allow manipulation of the container elements
-     * @tparam Iterable Container types that support iteration
-     * @param iterable Arbitrary number of containers
-     * @return zip-container class that provides begin and end members to be used in range based for-loops.
+     *
+     * @copydoc zip
      */
     template<typename ...Iterable>
     constexpr auto const_zip(Iterable &&...iterable) {
-        return impl::ZipContainer<impl::traits::reference_if_t<std::is_lvalue_reference_v<Iterable>,
+        return impl::ZipView<impl::traits::reference_if_t<std::is_lvalue_reference_v<Iterable>,
                 std::add_const_t<std::remove_reference_t<Iterable>>>...>(std::forward<Iterable>(iterable)...);
     }
 
@@ -707,25 +784,22 @@ namespace iterators {
      * @param container Source container
      * @param start Optional index offset (default 0)
      * @param increment Optional index increment (default 1)
-     * @return zip-container class that provides begin and end members to be used in range based for-loops.
+     * @return impl::ZipView that provides begin and end members to be used in range based for-loops.
+     * @relatesalso impl::ZipView
      */
     template<typename Container, typename T = std::size_t>
     constexpr auto enumerate(Container &&container, T start = T(0), T increment = T(1)) {
-        return zip(impl::CounterContainer(start, increment), std::forward<Container>(container));
+        return zip(impl::CounterRange(start, increment), std::forward<Container>(container));
     }
 
     /**
      * enumerate variant that does not allow manipulation of the container elements
-     * @tparam Container Container type that supports iteration
-     * @tparam T type of enumerate counter (default std::size_t)
-     * @param container Source container
-     * @param start Optional index offset (default 0)
-     * @param increment Optional index increment (default 1)
-     * @return zip-container class that provides begin and end members to be used in range based for-loops.
+     *
+     * @copydoc enumerate
      */
     template<typename Container, typename T = std::size_t>
     constexpr auto const_enumerate(Container &&container, T start = T(0), T increment = T(1)) {
-        return const_zip(impl::CounterContainer(start, increment), std::forward<Container>(container));
+        return const_zip(impl::CounterRange(start, increment), std::forward<Container>(container));
     }
 
 }
