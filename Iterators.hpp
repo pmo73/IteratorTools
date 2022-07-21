@@ -718,10 +718,17 @@ namespace iterators {
             /**
              * Difference between two CounterIterators
              * @param other
-             * @return integer ```n``` such that *this + n = other
+             * @return integer ```n``` such that ```other + n <= *this```
+             * @note When other has the same increment as ```*this```, then the returned value is guaranteed to
+             * fulfil ```other + n == *this```. In the following example, this is not the case:
+             * ```c++
+             * CounterIterator a(8, 1);
+             * CounterIterator b(4, 3);
+             * auto diff = a - b; // yields 1 since b + 1 <= a
+             * ```
              */
             constexpr difference_type operator-(const CounterIterator &other) const noexcept {
-                return static_cast<difference_type>((counter - other.counter) / std::abs(increment));
+                return static_cast<difference_type>((counter - other.counter) / other.increment);
             }
 
             /**
