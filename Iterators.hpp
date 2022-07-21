@@ -593,107 +593,228 @@ namespace iterators {
             ContainerTuple containers;
         };
 
+        /**
+         * @brief represents the unreachable end of an infinite sequence
+         */
         struct Unreachable {};
 
+        template<typename T>
+        constexpr T sgn(T val) noexcept {
+            return val < 0 ? T(-1) : T(1);
+        }
+
+        /**
+         * @brief Iterator of an infinite sequence of numbers. Simply increments an internal counter
+         * @tparam Type of the counter (most of the time this is ```std::size_t```)
+         */
         template<typename T>
         struct CounterIterator {
             using value_type = T;
             using reference = T;
             using pointer = void;
             using iterator_category = std::random_access_iterator_tag;
-            using difference_type = T;
+            using difference_type = std::ptrdiff_t;
             static_assert(std::is_integral_v<T> && !std::is_floating_point_v<T>);
 
+            /**
+             * CTor.
+             * @param begin start of number sequence
+             * @param increment step size (default is 1)
+             * @note Depending on the template type T, increment can also be negative.
+             */
             explicit constexpr CounterIterator(T begin, T increment = T(1)) noexcept:
                     counter(begin), increment(increment) {}
 
+            /**
+             * Increments value by increment
+             * @return
+             */
             constexpr CounterIterator &operator++() noexcept {
                 counter += increment;
                 return *this;
             }
 
+            /**
+             * Post increment
+             *
+             * @copydoc CounterIterator::operator++
+             */
             constexpr CounterIterator operator++(int) noexcept {
                 CounterIterator tmp = *this;
                 ++*this;
                 return tmp;
             }
 
+            /**
+             * Decrements value by increment
+             * @return
+             */
             constexpr CounterIterator &operator--() noexcept {
                 counter -= increment;
                 return *this;
             }
 
+            /**
+             * Post decrement
+             *
+             * @copydoc CounterIterator::operator--
+             */
             constexpr CounterIterator operator--(int) noexcept {
                 CounterIterator tmp = *this;
                 --*this;
                 return tmp;
             }
 
+            /**
+             * Compound assignment increment. Increments value by n times increment
+             * @param n number of steps
+             * @return
+             */
             constexpr CounterIterator &operator+=(difference_type n) noexcept {
                 counter += n * increment;
                 return *this;
             }
 
+            /**
+             * Returns a CounterIterator where the counter is incremented by n times increment
+             * @param it Instance of CounterIterator
+             * @param n number of steps
+             * @return
+             */
             friend constexpr CounterIterator operator+(CounterIterator it, difference_type n) noexcept {
                 it += n;
                 return it;
             }
 
+            /**
+             * @copydoc operator+
+             */
             friend constexpr CounterIterator operator+(difference_type n, CounterIterator it) noexcept {
                 it += n;
                 return it;
             }
 
+            /**
+             * Compound assignment increment. Increments value by n times increment
+             * @param n number of steps
+             * @return
+             */
             constexpr CounterIterator &operator-=(difference_type n) noexcept {
                 counter -= n * increment;
                 return *this;
             }
 
+            /**
+             * Returns a CounterIterator where the counter is incremented by n times increment
+             * @param it Instance of CounterIterator
+             * @param n number of steps
+             * @return
+             */
             friend constexpr CounterIterator operator-(CounterIterator it, difference_type n) noexcept {
                 it -= n;
                 return it;
             }
 
+            /**
+             * Difference between two CounterIterators
+             * @param other
+             * @return integer ```n``` such that *this + n = other
+             */
             constexpr difference_type operator-(const CounterIterator &other) const noexcept {
-                return (counter - other.counter) / increment;
+                return static_cast<difference_type>((counter - other.counter) / std::abs(increment));
             }
 
+            /**
+             * Given a CounterIterator ```it``` returns ```*(it + n)```
+             * @param n  number of steps
+             * @return
+             */
             constexpr reference operator[](difference_type n) const noexcept {
                 return counter + n * increment;
             }
 
+            /**
+             * Equality comparison.
+             * @param other
+             * @return true if counter of left and right hand side are equal
+             */
             constexpr bool operator==(const CounterIterator &other) const noexcept {
                 return counter == other.counter;
             }
 
+            /**
+             * Equality comparison with unreachable sentinel
+             * @return false
+             */
             constexpr bool operator==(Unreachable) const noexcept {
                 return false;
             }
 
+            /**
+             * Inequality comparison.
+             * @param other
+             * @return true if counter of left and right hand side are not equal
+             */
             constexpr bool operator!=(const CounterIterator &other) const noexcept {
                 return !(*this == other);
             }
 
+            /**
+             * Equality comparison with unreachable sentinel
+             * @return false
+             */
             constexpr bool operator!=(Unreachable) const noexcept {
                 return true;
             }
 
+            /**
+             * Less comparison
+             * @param other
+             * @return returns true if there exists an integer ```n``` (possible infinite) such
+             * that ```(*this) + n = other```
+             * @note If increment is negative then equality comparison is done by multiplying both side with -1.
+             * For example: let ```it1 = 5``` and ```it2 = -2``` be two CounterIterators where ```it1``` has negative
+             * increment. Then ```it1 < it2``` is true.
+             */
             constexpr bool operator<(const CounterIterator &other) const noexcept {
-                return counter < other.counter;
+                return sgn(increment) *  counter < sgn(increment) * other.counter;
             }
 
-            constexpr bool operator<=(const CounterIterator &other) const noexcept {
-                return counter <= other.counter;
-            }
-
+            /**
+             * Greater comparison
+             * @param other
+             * @return returns true if there exists an integer ```n``` (possible infinite) such
+             * that ```(*this) - n = other```
+             * @note If increment is negative then equality comparison is done by multiplying both side with -1.
+             * For example: let ```it1 = 5``` and ```it2 = -2``` be two CounterIterators where ```it1``` has negative
+             * increment. Then ```it1 > it2``` is false.
+             */
             constexpr bool operator>(const CounterIterator &other) const noexcept {
-                return counter > other.counter;
+                return sgn(increment) * counter > sgn(increment) * other.counter;
             }
 
+            /**
+             * Less or equal comparison
+             * @param other
+             * @return true if left hand side is not greater than right hand side
+             */
+            constexpr bool operator<=(const CounterIterator &other) const noexcept {
+                return !(*this > other);
+            }
+
+            /**
+             * Greater or equal comparison
+             * @param other
+             * @return true if left hand side is not less than right hand side
+             */
             constexpr bool operator>=(const CounterIterator &other) const noexcept {
-                return counter >= other.counter;
+                return !(*this < other);
             }
 
+            /**
+             * Produces the counter value
+             * @return value of internal counter
+             */
             constexpr T operator*() const noexcept {
                 return counter;
             }
