@@ -22,3 +22,13 @@ TEST(CounterIterator, basic) {
     EXPECT_EQ(*test, 2);
     EXPECT_EQ(test[4], 6);
 }
+
+TEST(CounterIterator, sentinel) {
+    using namespace iterators::impl;
+    CounterIterator test(3);
+    EXPECT_NE(test, Unreachable{});
+    test += 1000;
+    EXPECT_NE(test, Unreachable{});
+    EXPECT_LT(test, Unreachable{});
+    EXPECT_LE(test, Unreachable{});
+}
