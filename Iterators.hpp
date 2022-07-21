@@ -328,12 +328,17 @@ namespace iterators {
          * @tparam Iterators Underlying iterator types
          */
         template<typename Iterators>
-        class ZipIterator : public traits::iterator_category_from_value<traits::minimum_category_v<Iterators>> {
+        class ZipIterator
+                : public traits::iterator_category_from_value<traits::minimum_category_v<Iterators>>,
+                  public SynthesizedOperators<ZipIterator<Iterators>> {
         public:
             using value_type = traits::values_t<Iterators>;
             using reference = value_type;
             using pointer = void;
             using difference_type = std::ptrdiff_t;
+
+            using SynthesizedOperators<ZipIterator>::operator++;
+            using SynthesizedOperators<ZipIterator>::operator--;
 
             explicit constexpr ZipIterator(
                     const Iterators &iterators) noexcept(std::is_nothrow_copy_constructible_v<Iterators>)
@@ -355,11 +360,11 @@ namespace iterators {
              * Post increment. Increments all underlying iterators by one
              * @return
              */
-            constexpr ZipIterator operator++(int) noexcept(traits::is_nothrow_incrementible_v<Iterators>) {
+            /*constexpr ZipIterator operator++(int) noexcept(traits::is_nothrow_incrementible_v<Iterators>) {
                 ZipIterator tmp = *this;
                 ++*this;
                 return tmp;
-            }
+            }*/
 
             /**
              * @name bidirectional iteration
@@ -387,13 +392,13 @@ namespace iterators {
              * @tparam IsBidirectional
              * @return
              */
-            template<bool IsBidirectional = traits::is_bidirectional_v<Iterators>>
+            /*template<bool IsBidirectional = traits::is_bidirectional_v<Iterators>>
             constexpr auto operator--(int) noexcept(traits::is_nothrow_decrementible_v<Iterators>)
                 -> std::enable_if_t<IsBidirectional, ZipIterator> {
                 ZipIterator tmp = *this;
                 --*this;
                 return tmp;
-            }
+            }*/
 
             ///@}
 
@@ -499,11 +504,11 @@ namespace iterators {
              * @param n
              * @return
              */
-            template<bool IsRandomAccessible = traits::is_random_accessible_v<Iterators>>
+            /*template<bool IsRandomAccessible = traits::is_random_accessible_v<Iterators>>
             constexpr auto operator[](difference_type n) const noexcept(noexcept(*(std::declval<ZipIterator>() + n)))
             -> std::enable_if_t<IsRandomAccessible, reference> {
                 return *(*this + n);
-            }
+            }*/
 
             /**
              * Returns true if all underlying iterators compare less to the corresponding iterators from other
@@ -539,11 +544,11 @@ namespace iterators {
              * @param other
              * @return
              */
-            template<bool IsRandomAccessible = traits::is_random_accessible_v<Iterators>>
+            /*template<bool IsRandomAccessible = traits::is_random_accessible_v<Iterators>>
             constexpr auto operator<=(const ZipIterator &other) const
             noexcept(noexcept(std::declval<ZipIterator>() > other)) -> std::enable_if_t<IsRandomAccessible, bool> {
                 return !(*this > other);
-            }
+            }*/
 
             /**
              * Returns true if all underlying iterators compare greater or equal to the corresponding iterators from
@@ -552,11 +557,11 @@ namespace iterators {
              * @param other
              * @return
              */
-            template<bool IsRandomAccessible = traits::is_random_accessible_v<Iterators>>
+            /*template<bool IsRandomAccessible = traits::is_random_accessible_v<Iterators>>
             constexpr auto operator>=(const ZipIterator &other) const
             noexcept(noexcept(std::declval<ZipIterator>() < other)) -> std::enable_if_t<IsRandomAccessible, bool> {
                 return !(*this < other);
-            }
+            }*/
 
             ///@}
 
@@ -579,11 +584,11 @@ namespace iterators {
              * @param other
              * @return
              */
-            template<typename Its>
+            /*template<typename Its>
             constexpr bool operator!=(const ZipIterator<Its> &other) const
             noexcept(noexcept(std::declval<ZipIterator>() == other)) {
                 return !(*this == other);
-            }
+            }*/
 
             /**
              * Dereferences all underlying iterators and returns a tuple of the resulting iterator reference types
@@ -700,13 +705,16 @@ namespace iterators {
          * @tparam Type of the counter (most of the time this is ```std::size_t```)
          */
         template<typename T>
-        struct CounterIterator {
+        struct CounterIterator : public SynthesizedOperators<CounterIterator<T>> {
             using value_type = T;
             using reference = T;
             using pointer = void;
             using iterator_category = std::random_access_iterator_tag;
             using difference_type = std::ptrdiff_t;
             static_assert(std::is_integral_v<T> && !std::is_floating_point_v<T>);
+
+            using SynthesizedOperators<CounterIterator<T>>::operator++;
+            using SynthesizedOperators<CounterIterator<T>>::operator--;
 
             /**
              * CTor.
@@ -727,34 +735,12 @@ namespace iterators {
             }
 
             /**
-             * Post increment
-             *
-             * @copydoc CounterIterator::operator++
-             */
-            constexpr CounterIterator operator++(int) noexcept {
-                CounterIterator tmp = *this;
-                ++*this;
-                return tmp;
-            }
-
-            /**
              * Decrements value by increment
              * @return
              */
             constexpr CounterIterator &operator--() noexcept {
                 counter -= increment;
                 return *this;
-            }
-
-            /**
-             * Post decrement
-             *
-             * @copydoc CounterIterator::operator--
-             */
-            constexpr CounterIterator operator--(int) noexcept {
-                CounterIterator tmp = *this;
-                --*this;
-                return tmp;
             }
 
             /**
@@ -824,15 +810,6 @@ namespace iterators {
             }
 
             /**
-             * Given a CounterIterator ```it``` returns ```*(it + n)```
-             * @param n  number of steps
-             * @return
-             */
-            constexpr reference operator[](difference_type n) const noexcept {
-                return counter + n * increment;
-            }
-
-            /**
              * Equality comparison.
              * @param other
              * @return true if counter of left and right hand side are equal
@@ -842,38 +819,50 @@ namespace iterators {
             }
 
             /**
-             * Equality comparison with unreachable sentinel
+             * Equality comparison with Unreachable sentinel
              * @return false
              */
-            constexpr bool operator==(Unreachable) const noexcept {
+            friend constexpr bool operator==(const CounterIterator &, Unreachable) noexcept {
                 return false;
             }
 
             /**
-             * Inequality comparison.
-             * @tparam It Type of right hand side
-             * @param other
-             * @return true if counter of left and right hand side are not equal
+             * @copydoc operator==(const CounterIterator &, Unreachable)
              */
-            template<typename It>
-            constexpr bool operator!=(const It &other) const noexcept {
-                return !(*this == other);
+            friend constexpr bool operator==(Unreachable, const CounterIterator &) noexcept {
+                return false;
             }
 
             /**
              * Less than comparison with Unreachable sentinel
              * @return true
              */
-            constexpr bool operator<(Unreachable) const noexcept {
+            friend constexpr bool operator<(CounterIterator, Unreachable) noexcept {
                 return true;
+            }
+
+            /**
+             * @copybrief operator<(CounterIterator, Unreachable)
+             * @return false
+             */
+            friend constexpr bool operator<(Unreachable, CounterIterator) noexcept {
+                return false;
             }
 
             /**
              * Greater than comparison with Unreachable sentinel
              * @return false
              */
-            constexpr bool operator>(Unreachable) const noexcept {
+            friend constexpr bool operator>(CounterIterator, Unreachable) noexcept {
                 return false;
+            }
+
+            /**
+             * @copybrief operator>(CounterIterator, Unreachable)
+             * @return true
+             */
+            friend constexpr bool operator>(Unreachable, CounterIterator) noexcept {
+                return true;
             }
 
             /**
@@ -900,28 +889,6 @@ namespace iterators {
              */
             constexpr bool operator>(const CounterIterator &other) const noexcept {
                 return sgn(increment) * counter > sgn(increment) * other.counter;
-            }
-
-            /**
-             * Less or equal comparison
-             * @tparam type of right hand side
-             * @param other
-             * @return true if left hand side is not greater than right hand side
-             */
-            template<typename It>
-            constexpr bool operator<=(const It &other) const noexcept {
-                return !(*this > other);
-            }
-
-            /**
-             * Greater or equal comparison
-             * @tparam type of right hand side
-             * @param other
-             * @return true if left hand side is not less than right hand side
-             */
-            template<typename It>
-            constexpr bool operator>=(const It &other) const noexcept {
-                return !(*this < other);
             }
 
             /**

@@ -346,6 +346,7 @@ TEST(Iterators, post_increment_and_decrement) {
     std::array numbers{1, 2, 3, 4};
     std::list<std::string> strings{"a", "b", "c"};
     auto zIt = zip_i(numbers.begin(), strings.begin());
+    zIt <= zip_i(numbers.end(), strings.end());
     auto [n, s] = *++zIt;
     EXPECT_EQ(n, 2);
     EXPECT_EQ(s, "b");
