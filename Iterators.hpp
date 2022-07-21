@@ -434,10 +434,9 @@ namespace iterators {
              * @return
              */
             template<bool IsRandomAccessible = traits::is_random_accessible_v<Iterators>>
-            constexpr auto operator>(const ZipIterator &other) const
-            noexcept(noexcept(ZipIterator::allGreater(std::declval<Iterators>(),
-                                                      other.iterators))) -> std::enable_if_t<IsRandomAccessible, bool> {
-                return allGreater(iterators, other.iterators);
+            constexpr auto operator>(const ZipIterator &other) const noexcept(noexcept(other < other))
+            -> std::enable_if_t<IsRandomAccessible, bool> {
+                return other < *this;
             }
 
             /**
