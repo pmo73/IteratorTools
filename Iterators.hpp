@@ -759,6 +759,7 @@ namespace iterators {
 
             /**
              * Inequality comparison.
+             * @tparam It Type of right hand side
              * @param other
              * @return true if counter of left and right hand side are not equal
              */
@@ -767,10 +768,18 @@ namespace iterators {
                 return !(*this == other);
             }
 
+            /**
+             * Less than comparison with Unreachable sentinel
+             * @return true
+             */
             constexpr bool operator<(Unreachable) const noexcept {
                 return true;
             }
 
+            /**
+             * Greater than comparison with Unreachable sentinel
+             * @return false
+             */
             constexpr bool operator>(Unreachable) const noexcept {
                 return false;
             }
@@ -778,7 +787,7 @@ namespace iterators {
             /**
              * Less comparison
              * @param other
-             * @return returns true if there exists an integer ```n``` (possible infinite) such
+             * @return returns true if there exists an integer ```n``` such
              * that ```(*this) + n = other```
              * @note If increment is negative then equality comparison is done by multiplying both side with -1.
              * For example: let ```it1 = 5``` and ```it2 = -2``` be two CounterIterators where ```it1``` has negative
@@ -791,7 +800,7 @@ namespace iterators {
             /**
              * Greater comparison
              * @param other
-             * @return returns true if there exists an integer ```n``` (possible infinite) such
+             * @return returns true if there exists an integer ```n``` such
              * that ```(*this) - n = other```
              * @note If increment is negative then equality comparison is done by multiplying both side with -1.
              * For example: let ```it1 = 5``` and ```it2 = -2``` be two CounterIterators where ```it1``` has negative
@@ -803,6 +812,7 @@ namespace iterators {
 
             /**
              * Less or equal comparison
+             * @tparam type of right hand side
              * @param other
              * @return true if left hand side is not greater than right hand side
              */
@@ -813,6 +823,7 @@ namespace iterators {
 
             /**
              * Greater or equal comparison
+             * @tparam type of right hand side
              * @param other
              * @return true if left hand side is not less than right hand side
              */
