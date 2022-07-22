@@ -67,9 +67,9 @@
         template<std::size_t V>                                                 \
         using value_to_type_t = typename value_to_type<V>::type;
 
-#define DECL(TYPENAME) std::declval<TYPENAME>()
+#define INSTANCE_OF(TYPENAME) std::declval<TYPENAME>()
 
-#define INSTANCE DECL(Implementation)
+#define INSTANCE_OF_IMPL INSTANCE_OF(Implementation)
 
 #define REQUIRES(TYPENAME, EXPRESSION) typename Implementation = TYPENAME, typename = std::void_t<decltype(EXPRESSION)>
 
@@ -246,7 +246,7 @@ namespace iterators {
              * @param other
              * @return true if this is not equal to other
              */
-            template<typename T, REQUIRES(Impl, INSTANCE == DECL(T))>
+            template<typename T, REQUIRES(Impl, INSTANCE_OF_IMPL == INSTANCE_OF(T))>
             constexpr bool operator!=(const T &other) const noexcept(noexcept(std::declval<Impl>() == other)) {
                 return !(getImpl() == other);
             }
@@ -258,7 +258,7 @@ namespace iterators {
              * @param other
              * @return true if this is not greater than other
              */
-            template<typename T, REQUIRES(Impl, INSTANCE > DECL(T))>
+            template<typename T, REQUIRES(Impl, INSTANCE_OF_IMPL > INSTANCE_OF(T))>
             constexpr bool operator<=(const T& other) const noexcept(noexcept(std::declval<Impl>() > other)) {
                 return !(getImpl() > other);
             }
@@ -270,7 +270,7 @@ namespace iterators {
              * @param other
              * @return true if this is not less than other
              */
-            template<typename T, REQUIRES(Impl, INSTANCE < DECL(T))>
+            template<typename T, REQUIRES(Impl, INSTANCE_OF_IMPL < INSTANCE_OF(T))>
             constexpr bool operator>=(const T& other) const noexcept(noexcept(std::declval<Impl>() < other)) {
                 return !(getImpl() < other);
             }
@@ -281,7 +281,7 @@ namespace iterators {
              * @param n index
              * @return *(*this + n)
              */
-            template<REQUIRES(Impl, *(INSTANCE + DECL(typename Implementation::difference_type)))>
+            template<REQUIRES(Impl, *(INSTANCE_OF_IMPL + INSTANCE_OF(typename Implementation::difference_type)))>
             constexpr auto operator[](typename Implementation::difference_type n) const
             noexcept(noexcept(*(std::declval<Impl>() + n))) {
                 return *(getImpl() + n);
@@ -292,7 +292,7 @@ namespace iterators {
              * @tparam Implementation SFINAE helper, do not specify explicitly
              * @return
              */
-            template<REQUIRES(Impl, ++INSTANCE)>
+            template<REQUIRES(Impl, ++INSTANCE_OF_IMPL)>
             constexpr Impl operator++(int)
             noexcept(noexcept(++std::declval<Impl>()) && std::is_nothrow_copy_constructible_v<Impl>) {
                 auto tmp = getImpl();
@@ -305,7 +305,7 @@ namespace iterators {
              * @tparam Implementation SFINAE helper, do not specify explicitly
              * @return
              */
-            template<REQUIRES(Impl, --INSTANCE)>
+            template<REQUIRES(Impl, --INSTANCE_OF_IMPL)>
             constexpr Impl operator--(int)
             noexcept(noexcept(--std::declval<Impl>()) && std::is_nothrow_copy_constructible_v<Impl>) {
                 auto tmp = getImpl();
