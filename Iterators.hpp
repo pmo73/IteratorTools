@@ -235,6 +235,7 @@ namespace iterators {
          * - less than or equal comparison (requires operator>)
          * - greater than or equal comparison (requires operator<)
          * - array subscript operator[] (requires operator+ and dereference operator)
+         * - binary arithmetic operators (requires compound assignment operators)
          * @tparam Impl
          */
         template<typename Impl>
@@ -526,13 +527,6 @@ namespace iterators {
             noexcept(noexcept(ZipIterator::oneEqual(std::declval<Iterators>(), other.getIterators()))) {
                 return oneEqual(iterators, other.getIterators());
             }
-
-            /**
-             * True if *this is not equal to other
-             * @tparam Its
-             * @param other
-             * @return
-             */
 
             /**
              * Dereferences all underlying iterators and returns a tuple of the resulting iterator reference types
