@@ -313,6 +313,48 @@ namespace iterators {
                 return tmp;
             }
 
+            /**
+             * Binary +plus operator. Synthesized from compound assignment operator+=
+             * @tparam Implementation SFINAE helper, do not specify explicitly
+             * @param it left hand side
+             * @param n right hand side
+             * @return Instance of Impl
+             */
+            template<REQUIRES(Impl, INSTANCE_OF_IMPL += INSTANCE_OF(typename Implementation::difference_type)) >
+            friend constexpr auto operator+(Impl it, typename Implementation::difference_type n)
+            noexcept(noexcept(std::declval<Impl>() += n)) {
+                it += n;
+                return it;
+            }
+
+            /**
+             * Binary +plus operator. Synthesized from compound assignment operator+=
+             * @tparam Implementation SFINAE helper, do not specify explicitly
+             * @param n left hand side
+             * @param it right hand side
+             * @return Instance of Impl
+             */
+            template<REQUIRES(Impl, INSTANCE_OF_IMPL += INSTANCE_OF(typename Implementation::difference_type))>
+            friend constexpr auto operator+(typename Implementation::difference_type n, Impl it)
+            noexcept(noexcept(std::declval<Impl>() += n)) {
+                it += n;
+                return it;
+            }
+
+            /**
+             * Binary minus operator. Synthesized from compound assignment operator-=
+             * @tparam Implementation SFINAE helper, do not specify explicitly
+             * @param it left hand side
+             * @param n right hand side
+             * @return Instance of Impl
+             */
+            template<REQUIRES(Impl, INSTANCE_OF_IMPL -= INSTANCE_OF(typename Implementation::difference_type)) >
+            friend constexpr auto operator-(Impl it, typename Implementation::difference_type n)
+            noexcept(noexcept(std::declval<Impl>() -= n)) {
+                it -= n;
+                return it;
+            }
+
         private:
             constexpr Impl &getImpl() noexcept {
                 return static_cast<Impl &>(*this);
@@ -429,51 +471,6 @@ namespace iterators {
             }
 
             /**
-             * Returns a ZipIterator where all underlying iterators are incremented by n. Only available if all
-             * underlying iterators support at least random access
-             * @tparam IsRandomAccessible
-             * @param n
-             * @return
-             */
-            template<bool IsRandomAccessible = traits::is_random_accessible_v<Iterators>>
-            friend constexpr auto operator+(ZipIterator it, difference_type n)
-            noexcept(traits::is_nothrow_compound_assignable_plus_v<Iterators>)
-            -> std::enable_if_t<IsRandomAccessible, ZipIterator> {
-                it += n;
-                return it;
-            }
-
-            /**
-             * Returns a ZipIterator where all underlying iterators are incremented by n. Only available if all
-             * underlying iterators support at least random access
-             * @tparam IsRandomAccessible
-             * @param n
-             * @return
-             */
-            template<bool IsRandomAccessible = traits::is_random_accessible_v<Iterators>>
-            friend constexpr auto operator+(difference_type n, ZipIterator it)
-            noexcept(traits::is_nothrow_compound_assignable_plus_v<Iterators>)
-            -> std::enable_if_t<IsRandomAccessible, ZipIterator> {
-                it += n;
-                return it;
-            }
-
-            /**
-             * Returns a ZipIterator where all underlying iterators are decremented by n. Only available if all
-             * underlying iterators support at least random access
-             * @tparam IsRandomAccessible
-             * @param n
-             * @return
-             */
-            template<bool IsRandomAccessible = traits::is_random_accessible_v<Iterators>>
-            friend constexpr auto operator-(ZipIterator it, difference_type n)
-            noexcept(traits::is_nothrow_compound_assignable_minus_v<Iterators>)
-            -> std::enable_if_t<IsRandomAccessible, ZipIterator> {
-                it -= n;
-                return it;
-            }
-
-            /**
              * Returns the minimum pairwise difference n between all underlying iterators of *this and other, such that
              * other + n == *this
              * Only available if all underlying iterators support at least random access
@@ -487,14 +484,6 @@ namespace iterators {
             -> std::enable_if_t<IsRandomAccessible, difference_type> {
                 return minDifference(iterators, other.iterators);
             }
-
-            /**
-             * Given a ZipIterator it, returns *(it + n)
-             * Only available if all underlying iterators support at least random access
-             * @tparam IsRandomAccessible
-             * @param n
-             * @return
-             */
 
             /**
              * Returns true if all underlying iterators compare less to the corresponding iterators from other
@@ -522,22 +511,6 @@ namespace iterators {
             -> std::enable_if_t<IsRandomAccessible, bool> {
                 return other < *this;
             }
-
-            /**
-             * Returns true if all underlying iterators compare less or equal to the corresponding iterators from
-             * other. Only available if all underlying iterators support at least random access
-             * @tparam IsRandomAccessible
-             * @param other
-             * @return
-             */
-
-            /**
-             * Returns true if all underlying iterators compare greater or equal to the corresponding iterators from
-             * other. Only available if all underlying iterators support at least random access
-             * @tparam IsRandomAccessible
-             * @param other
-             * @return
-             */
 
             ///@}
 
@@ -723,43 +696,13 @@ namespace iterators {
             }
 
             /**
-             * Returns a CounterIterator where the counter is incremented by n times increment
-             * @param it Instance of CounterIterator
-             * @param n number of steps
-             * @return
-             */
-            friend constexpr CounterIterator operator+(CounterIterator it, difference_type n) noexcept {
-                it += n;
-                return it;
-            }
-
-            /**
-             * @copydoc operator+
-             */
-            friend constexpr CounterIterator operator+(difference_type n, CounterIterator it) noexcept {
-                it += n;
-                return it;
-            }
-
-            /**
-             * Compound assignment increment. Increments value by n times increment
+             * Compound assignment decrement. Increments value by n times increment
              * @param n number of steps
              * @return
              */
             constexpr CounterIterator &operator-=(difference_type n) noexcept {
                 counter -= n * increment;
                 return *this;
-            }
-
-            /**
-             * Returns a CounterIterator where the counter is incremented by n times increment
-             * @param it Instance of CounterIterator
-             * @param n number of steps
-             * @return
-             */
-            friend constexpr CounterIterator operator-(CounterIterator it, difference_type n) noexcept {
-                it -= n;
-                return it;
             }
 
             /**
