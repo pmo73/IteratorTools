@@ -391,13 +391,6 @@ namespace iterators {
                 return *this;
             }
 
-            /**
-             * Post decrement. Decrements all underlying iterators by one. Only available if all iterators support at
-             * least bidirectional access
-             * @tparam IsBidirectional
-             * @return
-             */
-
             ///@}
 
             /**
