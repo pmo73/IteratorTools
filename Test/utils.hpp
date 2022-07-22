@@ -4,6 +4,15 @@
 #include <string>
 #include <gtest/gtest.h>
 
+#define DETECT(NAME, EXPRESSION) \
+template<typename T, typename = std::void_t<>> \
+struct has_##NAME : std::false_type {};\
+template<typename T>             \
+struct has_##NAME<T, std::void_t<decltype(EXPRESSION)>> : std::true_type {}; \
+template<typename T>             \
+constexpr inline bool has_##NAME##_v = has_##NAME<T>::value;
+
+
 class MustNotCopy {
 public:
     MustNotCopy(std::string string);

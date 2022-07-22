@@ -9,6 +9,25 @@
 
 #define UNUSED(x) ((void) (x))
 
+DETECT(pre_inc, ++INSTANCE_OF(T))
+DETECT(pre_dec, --INSTANCE_OF(T))
+DETECT(post_inc, INSTANCE_OF(T)++)
+DETECT(post_dec, INSTANCE_OF(T)--)
+DETECT(plus_comp, INSTANCE_OF(T) += INSTANCE_OF(std::size_t))
+DETECT(minus_comp, INSTANCE_OF(T) -= INSTANCE_OF(std::size_t))
+DETECT(plus_left, INSTANCE_OF(T) + INSTANCE_OF(std::size_t))
+DETECT(plus_right, INSTANCE_OF(std::size_t) + INSTANCE_OF(T))
+DETECT(minus_left, INSTANCE_OF(T) - INSTANCE_OF(std::size_t))
+DETECT(difference, INSTANCE_OF(T) - INSTANCE_OF(T))
+DETECT(less, INSTANCE_OF(T) < INSTANCE_OF(T))
+DETECT(greater, INSTANCE_OF(T) > INSTANCE_OF(T))
+DETECT(leq, INSTANCE_OF(T) <= INSTANCE_OF(T))
+DETECT(geq, INSTANCE_OF(T) >= INSTANCE_OF(T))
+DETECT(eq, INSTANCE_OF(T) == INSTANCE_OF(T))
+DETECT(ineq, INSTANCE_OF(T) != INSTANCE_OF(T))
+DETECT(subsc, INSTANCE_OF(T)[INSTANCE_OF(std::size_t)])
+DETECT(deref, *INSTANCE_OF(T))
+
 template<typename Vec1, typename Vec2>
 constexpr auto dot(const Vec1 &x, const Vec2 &y) {
     using T = decltype(*std::begin(x) * *std::begin(y));
@@ -346,7 +365,6 @@ TEST(Iterators, post_increment_and_decrement) {
     std::array numbers{1, 2, 3, 4};
     std::list<std::string> strings{"a", "b", "c"};
     auto zIt = zip_i(numbers.begin(), strings.begin());
-    zIt <= zip_i(numbers.end(), strings.end());
     auto [n, s] = *++zIt;
     EXPECT_EQ(n, 2);
     EXPECT_EQ(s, "b");
@@ -385,6 +403,79 @@ TEST(Iterators, random_access_operators) {
     EXPECT_FALSE(zBegin + 3 < zEnd);
     EXPECT_FALSE(zBegin + 3 > zEnd);
     EXPECT_EQ(zEnd - zBegin, 3);
+}
+
+TEST(Iterators, SFINAE_forward_operators) {
+    using namespace iterators;
+    using ForwardZipIt = decltype(zip(std::declval<std::unordered_map<int, std::string>>(),
+                                      std::declval<std::add_lvalue_reference_t<int[3]>>()).begin());
+    EXPECT_TRUE(has_pre_inc_v<ForwardZipIt>);
+    EXPECT_TRUE(has_post_inc_v<ForwardZipIt>);
+    EXPECT_TRUE(has_eq_v<ForwardZipIt>);
+    EXPECT_TRUE(has_ineq_v<ForwardZipIt>);
+    EXPECT_TRUE(has_deref_v<ForwardZipIt>);
+
+    EXPECT_FALSE(has_pre_dec_v<ForwardZipIt>);
+    EXPECT_FALSE(has_post_dec_v<ForwardZipIt>);
+    EXPECT_FALSE(has_plus_comp_v<ForwardZipIt>);
+    EXPECT_FALSE(has_minus_comp_v<ForwardZipIt>);
+    EXPECT_FALSE(has_plus_left_v<ForwardZipIt>);
+    EXPECT_FALSE(has_plus_right_v<ForwardZipIt>);
+    EXPECT_FALSE(has_minus_left_v<ForwardZipIt>);
+    EXPECT_FALSE(has_difference_v<ForwardZipIt>);
+    EXPECT_FALSE(has_less_v<ForwardZipIt>);
+    EXPECT_FALSE(has_greater_v<ForwardZipIt>);
+    EXPECT_FALSE(has_leq_v<ForwardZipIt>);
+    EXPECT_FALSE(has_geq_v<ForwardZipIt>);
+    EXPECT_FALSE(has_subsc_v<ForwardZipIt>);
+}
+
+TEST(Iterators, SFINAE_bidirectional_operators) {
+    using namespace iterators;
+    using BidirZipIt = decltype(zip(std::declval<std::list<int>>(), std::declval<std::vector<std::string>>()).begin());
+    EXPECT_TRUE(has_pre_inc_v<BidirZipIt>);
+    EXPECT_TRUE(has_post_inc_v<BidirZipIt>);
+    EXPECT_TRUE(has_eq_v<BidirZipIt>);
+    EXPECT_TRUE(has_ineq_v<BidirZipIt>);
+    EXPECT_TRUE(has_deref_v<BidirZipIt>);
+    EXPECT_TRUE(has_pre_dec_v<BidirZipIt>);
+    EXPECT_TRUE(has_post_dec_v<BidirZipIt>);
+
+    EXPECT_FALSE(has_plus_comp_v<BidirZipIt>);
+    EXPECT_FALSE(has_minus_comp_v<BidirZipIt>);
+    EXPECT_FALSE(has_plus_left_v<BidirZipIt>);
+    EXPECT_FALSE(has_plus_right_v<BidirZipIt>);
+    EXPECT_FALSE(has_minus_left_v<BidirZipIt>);
+    EXPECT_FALSE(has_difference_v<BidirZipIt>);
+    EXPECT_FALSE(has_less_v<BidirZipIt>);
+    EXPECT_FALSE(has_greater_v<BidirZipIt>);
+    EXPECT_FALSE(has_leq_v<BidirZipIt>);
+    EXPECT_FALSE(has_geq_v<BidirZipIt>);
+    EXPECT_FALSE(has_subsc_v<BidirZipIt>);
+}
+
+TEST(Iterators, SFINAE_random_access_operators) {
+    using namespace iterators;
+    using RandomAccessIterator = decltype(zip(std::declval<std::array<int, 4>>(),
+                                              std::declval<std::vector<std::string>>()).begin());
+    EXPECT_TRUE(has_pre_inc_v<RandomAccessIterator>);
+    EXPECT_TRUE(has_post_inc_v<RandomAccessIterator>);
+    EXPECT_TRUE(has_eq_v<RandomAccessIterator>);
+    EXPECT_TRUE(has_ineq_v<RandomAccessIterator>);
+    EXPECT_TRUE(has_deref_v<RandomAccessIterator>);
+    EXPECT_TRUE(has_pre_dec_v<RandomAccessIterator>);
+    EXPECT_TRUE(has_post_dec_v<RandomAccessIterator>);
+    EXPECT_TRUE(has_plus_comp_v<RandomAccessIterator>);
+    EXPECT_TRUE(has_minus_comp_v<RandomAccessIterator>);
+    EXPECT_TRUE(has_plus_left_v<RandomAccessIterator>);
+    EXPECT_TRUE(has_plus_right_v<RandomAccessIterator>);
+    EXPECT_TRUE(has_minus_left_v<RandomAccessIterator>);
+    EXPECT_TRUE(has_difference_v<RandomAccessIterator>);
+    EXPECT_TRUE(has_less_v<RandomAccessIterator>);
+    EXPECT_TRUE(has_greater_v<RandomAccessIterator>);
+    EXPECT_TRUE(has_leq_v<RandomAccessIterator>);
+    EXPECT_TRUE(has_geq_v<RandomAccessIterator>);
+    EXPECT_TRUE(has_subsc_v<RandomAccessIterator>);
 }
 
 TEST(Iterators, stl_algos) {
