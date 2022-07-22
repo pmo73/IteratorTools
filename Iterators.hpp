@@ -372,16 +372,6 @@ namespace iterators {
             }
 
             /**
-             * Post increment. Increments all underlying iterators by one
-             * @return
-             */
-            /*constexpr ZipIterator operator++(int) noexcept(traits::is_nothrow_incrementible_v<Iterators>) {
-                ZipIterator tmp = *this;
-                ++*this;
-                return tmp;
-            }*/
-
-            /**
              * @name bidirectional iteration
              * @brief the following operators are only available if all underlying iterators support bidirectional
              * access
@@ -407,13 +397,6 @@ namespace iterators {
              * @tparam IsBidirectional
              * @return
              */
-            /*template<bool IsBidirectional = traits::is_bidirectional_v<Iterators>>
-            constexpr auto operator--(int) noexcept(traits::is_nothrow_decrementible_v<Iterators>)
-                -> std::enable_if_t<IsBidirectional, ZipIterator> {
-                ZipIterator tmp = *this;
-                --*this;
-                return tmp;
-            }*/
 
             ///@}
 
@@ -519,11 +502,6 @@ namespace iterators {
              * @param n
              * @return
              */
-            /*template<bool IsRandomAccessible = traits::is_random_accessible_v<Iterators>>
-            constexpr auto operator[](difference_type n) const noexcept(noexcept(*(std::declval<ZipIterator>() + n)))
-            -> std::enable_if_t<IsRandomAccessible, reference> {
-                return *(*this + n);
-            }*/
 
             /**
              * Returns true if all underlying iterators compare less to the corresponding iterators from other
@@ -559,11 +537,6 @@ namespace iterators {
              * @param other
              * @return
              */
-            /*template<bool IsRandomAccessible = traits::is_random_accessible_v<Iterators>>
-            constexpr auto operator<=(const ZipIterator &other) const
-            noexcept(noexcept(std::declval<ZipIterator>() > other)) -> std::enable_if_t<IsRandomAccessible, bool> {
-                return !(*this > other);
-            }*/
 
             /**
              * Returns true if all underlying iterators compare greater or equal to the corresponding iterators from
@@ -572,11 +545,6 @@ namespace iterators {
              * @param other
              * @return
              */
-            /*template<bool IsRandomAccessible = traits::is_random_accessible_v<Iterators>>
-            constexpr auto operator>=(const ZipIterator &other) const
-            noexcept(noexcept(std::declval<ZipIterator>() < other)) -> std::enable_if_t<IsRandomAccessible, bool> {
-                return !(*this < other);
-            }*/
 
             ///@}
 
@@ -599,11 +567,6 @@ namespace iterators {
              * @param other
              * @return
              */
-            /*template<typename Its>
-            constexpr bool operator!=(const ZipIterator<Its> &other) const
-            noexcept(noexcept(std::declval<ZipIterator>() == other)) {
-                return !(*this == other);
-            }*/
 
             /**
              * Dereferences all underlying iterators and returns a tuple of the resulting iterator reference types
@@ -625,8 +588,6 @@ namespace iterators {
             BINARY_TUPLE_FOR_EACH_FOLD(ELEMENT1 == ELEMENT2, ||, oneEqual)
 
             BINARY_TUPLE_FOR_EACH_FOLD(ELEMENT1 < ELEMENT2, &&, allLess)
-
-            BINARY_TUPLE_FOR_EACH_FOLD(ELEMENT1 > ELEMENT2, &&, allGreater)
 
             BINARY_TUPLE_FOR_EACH(std::min<difference_type>({ELEMENT1 - ELEMENT2 ...}), minDifference)
 
