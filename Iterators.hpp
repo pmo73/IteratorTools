@@ -67,6 +67,12 @@
         template<std::size_t V>                                                 \
         using value_to_type_t = typename value_to_type<V>::type;
 
+#define DECL(TYPENAME) std::declval<TYPENAME>()
+
+#define INSTANCE DECL(Implementation)
+
+#define REQUIRES(TYPENAME, EXPRESSION) typename Implementation = TYPENAME, typename = std::void_t<decltype(EXPRESSION)>
+
 /**
  * @brief namespace containing zip and enumerate functions
  */
@@ -235,51 +241,58 @@ namespace iterators {
         struct SynthesizedOperators {
             /**
              * Inequality comparison
-             * @tparam T
+             * @tparam T type of right hand side
+             * @tparam Implementation SFINAE helper, do not specify explicitly
              * @param other
              * @return true if this is not equal to other
              */
-            template<typename T>
+            template<typename T, REQUIRES(Impl, INSTANCE == DECL(T))>
             constexpr bool operator!=(const T &other) const noexcept(noexcept(std::declval<Impl>() == other)) {
                 return !(getImpl() == other);
             }
 
             /**
              * Less than or equal comparison
-             * @tparam T
+             * @tparam T type of right hand side
+             * @tparam Implementation SFINAE helper, do not specify explicitly
              * @param other
              * @return true if this is not greater than other
              */
-            template<typename T>
+            template<typename T, REQUIRES(Impl, INSTANCE > DECL(T))>
             constexpr bool operator<=(const T& other) const noexcept(noexcept(std::declval<Impl>() > other)) {
                 return !(getImpl() > other);
             }
 
             /**
              * Greater than or equal comparison
-             * @tparam T
+             * @tparam T type of right hand side
+             * @tparam Implementation SFINAE helper, do not specify explicitly
              * @param other
              * @return true if this is not less than other
              */
-            template<typename T>
+            template<typename T, REQUIRES(Impl, INSTANCE < DECL(T))>
             constexpr bool operator>=(const T& other) const noexcept(noexcept(std::declval<Impl>() < other)) {
                 return !(getImpl() < other);
             }
 
             /**
              * Array subscript operator
+             * @tparam Implementation SFINAE helper, do not specify explicitly
              * @param n index
              * @return *(*this + n)
              */
-            constexpr auto operator[](typename std::ptrdiff_t n) const
+            template<REQUIRES(Impl, *(INSTANCE + DECL(typename Implementation::difference_type)))>
+            constexpr auto operator[](typename Implementation::difference_type n) const
             noexcept(noexcept(*(std::declval<Impl>() + n))) {
                 return *(getImpl() + n);
             }
 
             /**
              * Postfix increment. Synthesized from prefix increment
+             * @tparam Implementation SFINAE helper, do not specify explicitly
              * @return
              */
+            template<REQUIRES(Impl, ++INSTANCE)>
             constexpr Impl operator++(int)
             noexcept(noexcept(++std::declval<Impl>()) && std::is_nothrow_copy_constructible_v<Impl>) {
                 auto tmp = getImpl();
@@ -289,8 +302,10 @@ namespace iterators {
 
             /**
              * Postfix decrement. Synthesized from prefix decrement
+             * @tparam Implementation SFINAE helper, do not specify explicitly
              * @return
              */
+            template<REQUIRES(Impl, --INSTANCE)>
             constexpr Impl operator--(int)
             noexcept(noexcept(--std::declval<Impl>()) && std::is_nothrow_copy_constructible_v<Impl>) {
                 auto tmp = getImpl();
