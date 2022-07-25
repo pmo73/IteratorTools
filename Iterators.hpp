@@ -631,6 +631,12 @@ namespace iterators {
          */
         struct Unreachable {};
 
+        /**
+         * Signum function
+         * @tparam T arbitrary scalar type
+         * @param val function argument
+         * @return +1 if val >= 0, -1 else
+         */
         template<typename T>
         constexpr T sgn(T val) noexcept {
             return val < 0 ? T(-1) : T(1);
