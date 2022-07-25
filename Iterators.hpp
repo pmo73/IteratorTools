@@ -260,8 +260,14 @@ namespace iterators {
              * @return true if this is not greater than other
              */
             template<typename T, REQUIRES(Impl, INSTANCE_OF_IMPL > INSTANCE_OF(T))>
-            constexpr bool operator<=(const T& other) const noexcept(noexcept(std::declval<Impl>() > other)) {
-                return !(getImpl() > other);
+            friend constexpr bool operator<=(const Impl &lhs, const T& rhs) noexcept(noexcept(lhs > rhs)) {
+                return !(lhs > rhs);
+            }
+
+            template<typename T, REQUIRES(Impl, INSTANCE_OF_IMPL > INSTANCE_OF(T))>
+            friend constexpr auto operator<=(const T &lhs, const Impl& rhs) noexcept(noexcept(lhs > rhs))
+            -> std::enable_if_t<!std::is_same_v<T, Impl>, bool> {
+                return !(lhs > rhs);
             }
 
             /**
@@ -272,8 +278,14 @@ namespace iterators {
              * @return true if this is not less than other
              */
             template<typename T, REQUIRES(Impl, INSTANCE_OF_IMPL < INSTANCE_OF(T))>
-            constexpr bool operator>=(const T& other) const noexcept(noexcept(std::declval<Impl>() < other)) {
-                return !(getImpl() < other);
+            friend constexpr bool operator>=(const Impl &lhs, const T& rhs) noexcept(noexcept(lhs < rhs)) {
+                return !(lhs < rhs);
+            }
+
+            template<typename T, REQUIRES(Impl, INSTANCE_OF_IMPL < INSTANCE_OF(T))>
+            friend constexpr auto operator>=(const T &lhs, const Impl &rhs) noexcept(noexcept(lhs < rhs))
+            -> std::enable_if_t<!std::is_same_v<T, Impl>, bool>{
+                return !(lhs < rhs);
             }
 
             /**
