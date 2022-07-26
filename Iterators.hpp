@@ -225,68 +225,22 @@ namespace iterators {
             constexpr inline bool is_bidirectional_v = is_bidirectional<T>::value;
         }
 
-        /**
-         * @brief CRTP-class that provides additional operators synthesized from basic operators
-         * @details @copybrief
-         *
-         * Adds the following operators
-         * - postfix increment and decrement (requires the respective prefix operators)
-         * - inequality comparison (requires operator==)
-         * - less than or equal comparison (requires operator>)
-         * - greater than or equal comparison (requires operator<)
-         * - array subscript operator[] (requires operator+ and dereference operator)
-         * - binary arithmetic operators (requires compound assignment operators)
-         * @tparam Impl
-         */
+        template<typename Impl, template<typename> typename CrtpClass>
+        struct CrtpHelper {
+            constexpr Impl &getImpl() noexcept {
+                return static_cast<Impl &>(*this);
+            }
+
+            constexpr const Impl &getImpl() const noexcept {
+                return static_cast<const Impl &>(*this);
+            }
+        private:
+            CrtpHelper() = default;
+            friend CrtpClass<Impl>;
+        };
+
         template<typename Impl>
-        struct SynthesizedOperators {
-            /**
-             * Inequality comparison
-             * @tparam T type of right hand side
-             * @tparam Implementation SFINAE helper, do not specify explicitly
-             * @param other
-             * @return true if this is not equal to other
-             */
-            template<typename T, REQUIRES(Impl, INSTANCE_OF_IMPL == INSTANCE_OF(T))>
-            constexpr bool operator!=(const T &other) const noexcept(noexcept(std::declval<Impl>() == other)) {
-                return !(getImpl() == other);
-            }
-
-            /**
-             * Less than or equal comparison
-             * @tparam T type of right hand side
-             * @tparam Implementation SFINAE helper, do not specify explicitly
-             * @param other
-             * @return true if this is not greater than other
-             */
-            template<typename T, REQUIRES(Impl, INSTANCE_OF_IMPL > INSTANCE_OF(T))>
-            friend constexpr bool operator<=(const Impl &lhs, const T& rhs) noexcept(noexcept(lhs > rhs)) {
-                return !(lhs > rhs);
-            }
-
-            template<typename T, REQUIRES(Impl, INSTANCE_OF_IMPL > INSTANCE_OF(T))>
-            friend constexpr auto operator<=(const T &lhs, const Impl& rhs) noexcept(noexcept(lhs > rhs))
-            -> std::enable_if_t<!std::is_same_v<T, Impl>, bool> {
-                return !(lhs > rhs);
-            }
-
-            /**
-             * Greater than or equal comparison
-             * @tparam T type of right hand side
-             * @tparam Implementation SFINAE helper, do not specify explicitly
-             * @param other
-             * @return true if this is not less than other
-             */
-            template<typename T, REQUIRES(Impl, INSTANCE_OF_IMPL < INSTANCE_OF(T))>
-            friend constexpr bool operator>=(const Impl &lhs, const T& rhs) noexcept(noexcept(lhs < rhs)) {
-                return !(lhs < rhs);
-            }
-
-            template<typename T, REQUIRES(Impl, INSTANCE_OF_IMPL < INSTANCE_OF(T))>
-            friend constexpr auto operator>=(const T &lhs, const Impl &rhs) noexcept(noexcept(lhs < rhs))
-            -> std::enable_if_t<!std::is_same_v<T, Impl>, bool>{
-                return !(lhs < rhs);
-            }
+        struct PointerArithmetics : public CrtpHelper<Impl, PointerArithmetics> {
 
             /**
              * Array subscript operator
@@ -297,7 +251,7 @@ namespace iterators {
             template<REQUIRES(Impl, *(INSTANCE_OF_IMPL + INSTANCE_OF(typename Implementation::difference_type)))>
             constexpr auto operator[](typename Implementation::difference_type n) const
             noexcept(noexcept(*(std::declval<Impl>() + n))) {
-                return *(getImpl() + n);
+                return *(this->getImpl() + n);
             }
 
             /**
@@ -308,7 +262,7 @@ namespace iterators {
             template<REQUIRES(Impl, ++INSTANCE_OF_IMPL)>
             constexpr Impl operator++(int)
             noexcept(noexcept(++std::declval<Impl>()) && std::is_nothrow_copy_constructible_v<Impl>) {
-                auto tmp = getImpl();
+                auto tmp = this->getImpl();
                 this->getImpl().operator++();
                 return tmp;
             }
@@ -321,7 +275,7 @@ namespace iterators {
             template<REQUIRES(Impl, --INSTANCE_OF_IMPL)>
             constexpr Impl operator--(int)
             noexcept(noexcept(--std::declval<Impl>()) && std::is_nothrow_copy_constructible_v<Impl>) {
-                auto tmp = getImpl();
+                auto tmp = this->getImpl();
                 this->getImpl().operator--();
                 return tmp;
             }
@@ -368,14 +322,76 @@ namespace iterators {
                 return it;
             }
 
+
         private:
-            constexpr Impl &getImpl() noexcept {
-                return static_cast<Impl &>(*this);
+            PointerArithmetics() = default;
+            friend Impl;
+        };
+
+        /**
+         * @brief CRTP-class that provides additional operators synthesized from basic operators
+         * @details @copybrief
+         *
+         * Adds the following operators
+         * - postfix increment and decrement (requires the respective prefix operators)
+         * - inequality comparison (requires operator==)
+         * - less than or equal comparison (requires operator>)
+         * - greater than or equal comparison (requires operator<)
+         * - array subscript operator[] (requires operator+ and dereference operator)
+         * - binary arithmetic operators (requires compound assignment operators)
+         * @tparam Impl
+         */
+        template<typename Impl>
+        struct SynthesizedOperators : public CrtpHelper<Impl, SynthesizedOperators> {
+            /**
+             * Inequality comparison
+             * @tparam T type of right hand side
+             * @tparam Implementation SFINAE helper, do not specify explicitly
+             * @param other
+             * @return true if this is not equal to other
+             */
+            template<typename T, REQUIRES(Impl, INSTANCE_OF_IMPL == INSTANCE_OF(T))>
+            constexpr bool operator!=(const T &other)const  noexcept(noexcept(std::declval<Impl>() == other)) {
+                return !(this->getImpl() == other);
             }
 
-            constexpr const Impl &getImpl() const noexcept {
-                return static_cast<const Impl &>(*this);
+            /**
+             * Less than or equal comparison
+             * @tparam T type of right hand side
+             * @tparam Implementation SFINAE helper, do not specify explicitly
+             * @param other
+             * @return true if this is not greater than other
+             */
+            template<typename T, REQUIRES(Impl, INSTANCE_OF_IMPL > INSTANCE_OF(T))>
+            friend constexpr bool operator<=(const Impl &lhs, const T& rhs) noexcept(noexcept(lhs > rhs)) {
+                return !(lhs > rhs);
             }
+
+            template<typename T, REQUIRES(Impl, INSTANCE_OF_IMPL > INSTANCE_OF(T))>
+            friend constexpr auto operator<=(const T &lhs, const Impl& rhs) noexcept(noexcept(lhs > rhs))
+            -> std::enable_if_t<!std::is_same_v<T, Impl>, bool> {
+                return !(lhs > rhs);
+            }
+
+            /**
+             * Greater than or equal comparison
+             * @tparam T type of right hand side
+             * @tparam Implementation SFINAE helper, do not specify explicitly
+             * @param other
+             * @return true if this is not less than other
+             */
+            template<typename T, REQUIRES(Impl, INSTANCE_OF_IMPL < INSTANCE_OF(T))>
+            friend constexpr bool operator>=(const Impl &lhs, const T& rhs) noexcept(noexcept(lhs < rhs)) {
+                return !(lhs < rhs);
+            }
+
+            template<typename T, REQUIRES(Impl, INSTANCE_OF_IMPL < INSTANCE_OF(T))>
+            friend constexpr auto operator>=(const T &lhs, const Impl &rhs) noexcept(noexcept(lhs < rhs))
+            -> std::enable_if_t<!std::is_same_v<T, Impl>, bool>{
+                return !(lhs < rhs);
+            }
+
+        private:
 
             SynthesizedOperators() = default;
             friend Impl;
@@ -400,15 +416,16 @@ namespace iterators {
         template<typename Iterators>
         class ZipIterator
                 : public traits::iterator_category_from_value<traits::minimum_category_v<Iterators>>,
-                  public SynthesizedOperators<ZipIterator<Iterators>> {
+                  public SynthesizedOperators<ZipIterator<Iterators>>,
+                  public PointerArithmetics<ZipIterator<Iterators>> {
         public:
             using value_type = traits::values_t<Iterators>;
             using reference = value_type;
             using pointer = void;
             using difference_type = std::ptrdiff_t;
 
-            using SynthesizedOperators<ZipIterator>::operator++;
-            using SynthesizedOperators<ZipIterator>::operator--;
+            using PointerArithmetics<ZipIterator>::operator++;
+            using PointerArithmetics<ZipIterator>::operator--;
 
             explicit constexpr ZipIterator(
                     const Iterators &iterators) noexcept(std::is_nothrow_copy_constructible_v<Iterators>)
@@ -659,7 +676,8 @@ namespace iterators {
          * @tparam Type of the counter (most of the time this is ```std::size_t```)
          */
         template<typename T>
-        struct CounterIterator : public SynthesizedOperators<CounterIterator<T>> {
+        struct CounterIterator : public SynthesizedOperators<CounterIterator<T>>,
+                                 public PointerArithmetics<CounterIterator<T>> {
             using value_type = T;
             using reference = T;
             using pointer = void;
@@ -667,8 +685,8 @@ namespace iterators {
             using difference_type = std::ptrdiff_t;
             static_assert(std::is_integral_v<T> && !std::is_floating_point_v<T>);
 
-            using SynthesizedOperators<CounterIterator<T>>::operator++;
-            using SynthesizedOperators<CounterIterator<T>>::operator--;
+            using PointerArithmetics<CounterIterator<T>>::operator++;
+            using PointerArithmetics<CounterIterator<T>>::operator--;
 
             /**
              * CTor.
