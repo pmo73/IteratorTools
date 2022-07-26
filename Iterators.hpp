@@ -561,11 +561,11 @@ namespace iterators {
              * @param other
              * @return
              */
-            template<bool IsRandomAccessible = traits::is_random_accessible_v<Iterators>>
-            constexpr auto operator<(const ZipIterator &other) const
+            template<typename Its, bool IsRandomAccessible = traits::is_random_accessible_v<Iterators>>
+            constexpr auto operator<(const ZipIterator<Its> &other) const
             noexcept(noexcept(ZipIterator::allLess(std::declval<Iterators>(),
-                                                   other.iterators))) -> std::enable_if_t<IsRandomAccessible, bool> {
-                return allLess(iterators, other.iterators);
+                                                   other.getIterators()))) -> std::enable_if_t<IsRandomAccessible, bool> {
+                return allLess(iterators, other.getIterators());
             }
 
             /**
@@ -575,8 +575,8 @@ namespace iterators {
              * @param other
              * @return
              */
-            template<bool IsRandomAccessible = traits::is_random_accessible_v<Iterators>>
-            constexpr auto operator>(const ZipIterator &other) const noexcept(noexcept(other < other))
+            template<typename Its, bool IsRandomAccessible = traits::is_random_accessible_v<Iterators>>
+            constexpr auto operator>(const ZipIterator<Its> &other) const noexcept(noexcept(other < other))
             -> std::enable_if_t<IsRandomAccessible, bool> {
                 return other < *this;
             }
