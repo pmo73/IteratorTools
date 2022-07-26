@@ -223,24 +223,19 @@ namespace iterators {
 
             template<typename T>
             constexpr inline bool is_bidirectional_v = is_bidirectional<T>::value;
+
+            template<typename T, typename U>
+            struct same_templates : std::false_type {};
+
+            template<template<typename> typename TC, typename T, typename U>
+            struct same_templates<TC<T>, TC<U>> : std::true_type {};
+
+            template<typename T, typename U>
+            constexpr inline bool same_templates_v = same_templates<T, U>::value;
         }
 
-        template<typename Impl, template<typename> typename CrtpClass>
-        struct CrtpHelper {
-            constexpr Impl &getImpl() noexcept {
-                return static_cast<Impl &>(*this);
-            }
-
-            constexpr const Impl &getImpl() const noexcept {
-                return static_cast<const Impl &>(*this);
-            }
-        private:
-            CrtpHelper() = default;
-            friend CrtpClass<Impl>;
-        };
-
         template<typename Impl>
-        struct PointerArithmetics : public CrtpHelper<Impl, PointerArithmetics> {
+        struct PointerArithmetics {
 
             /**
              * Array subscript operator
@@ -324,9 +319,17 @@ namespace iterators {
 
 
         private:
+            constexpr Impl &getImpl() noexcept {
+                return static_cast<Impl &>(*this);
+            }
+
+            constexpr const Impl &getImpl() const noexcept {
+                return static_cast<const Impl &>(*this);
+            }
             PointerArithmetics() = default;
             friend Impl;
         };
+
 
         /**
          * @brief CRTP-class that provides additional operators synthesized from basic operators
@@ -341,8 +344,24 @@ namespace iterators {
          * - binary arithmetic operators (requires compound assignment operators)
          * @tparam Impl
          */
-        template<typename Impl>
-        struct SynthesizedOperators : public CrtpHelper<Impl, SynthesizedOperators> {
+        template<typename Impl, typename Parent, template<typename> typename Comp,
+                template<typename> typename ...Rest>
+        struct ComparisonOperators
+                : public ComparisonOperators<Impl, ComparisonOperators<Impl, Parent, Comp, Rest...>, Comp>,
+                  public ComparisonOperators<Impl, ComparisonOperators<Impl, Parent, Comp, Rest...>, Rest...> {
+        private:
+            ComparisonOperators() = default;
+            friend Impl;
+        };
+
+        template<typename Impl, template<typename> typename ...Comps>
+        using create_comp_operators = ComparisonOperators<Impl, Impl, Comps...>;
+
+        /**
+         * @copydoc ComparisonOperators
+         */
+        template<typename Impl, typename Parent, template<typename> typename Comp>
+        struct ComparisonOperators<Impl, Parent, Comp> {
             /**
              * Inequality comparison
              * @tparam T type of right hand side
@@ -350,9 +369,15 @@ namespace iterators {
              * @param other
              * @return true if this is not equal to other
              */
-            template<typename T, REQUIRES(Impl, INSTANCE_OF_IMPL == INSTANCE_OF(T))>
-            constexpr bool operator!=(const T &other)const  noexcept(noexcept(std::declval<Impl>() == other)) {
-                return !(this->getImpl() == other);
+            template<typename T, REQUIRES(Impl, INSTANCE_OF_IMPL == INSTANCE_OF(Comp<T>))>
+            friend constexpr bool operator!=(const Impl &lhs, const Comp<T> &other) noexcept(noexcept(lhs == other)) {
+                return !(lhs == other);
+            }
+
+            template<typename T, REQUIRES(Impl, INSTANCE_OF_IMPL == INSTANCE_OF(Comp<T>))>
+            friend constexpr auto operator!=(const Comp<T> &lhs, const Impl &other) noexcept(noexcept(lhs == other))
+            -> std::enable_if_t<!traits::same_templates_v<Comp<T>, Impl>, bool> {
+                return !(lhs == other);
             }
 
             /**
@@ -362,14 +387,14 @@ namespace iterators {
              * @param other
              * @return true if this is not greater than other
              */
-            template<typename T, REQUIRES(Impl, INSTANCE_OF_IMPL > INSTANCE_OF(T))>
-            friend constexpr bool operator<=(const Impl &lhs, const T& rhs) noexcept(noexcept(lhs > rhs)) {
+            template<typename T, REQUIRES(Impl, INSTANCE_OF_IMPL > INSTANCE_OF(Comp<T>))>
+            friend constexpr bool operator<=(const Impl &lhs, const Comp<T>& rhs) noexcept(noexcept(lhs > rhs)) {
                 return !(lhs > rhs);
             }
 
-            template<typename T, REQUIRES(Impl, INSTANCE_OF_IMPL > INSTANCE_OF(T))>
-            friend constexpr auto operator<=(const T &lhs, const Impl& rhs) noexcept(noexcept(lhs > rhs))
-            -> std::enable_if_t<!std::is_same_v<T, Impl>, bool> {
+            template<typename T, REQUIRES(Impl, INSTANCE_OF_IMPL > INSTANCE_OF(Comp<T>))>
+            friend constexpr auto operator<=(const Comp<T> &lhs, const Impl& rhs) noexcept(noexcept(lhs > rhs))
+            -> std::enable_if_t<!traits::same_templates_v<Comp<T>, Impl>, bool> {
                 return !(lhs > rhs);
             }
 
@@ -380,21 +405,20 @@ namespace iterators {
              * @param other
              * @return true if this is not less than other
              */
-            template<typename T, REQUIRES(Impl, INSTANCE_OF_IMPL < INSTANCE_OF(T))>
-            friend constexpr bool operator>=(const Impl &lhs, const T& rhs) noexcept(noexcept(lhs < rhs)) {
+            template<typename T, REQUIRES(Impl, INSTANCE_OF_IMPL < INSTANCE_OF(Comp<T>))>
+            friend constexpr bool operator>=(const Impl &lhs, const Comp<T>& rhs) noexcept(noexcept(lhs < rhs)) {
                 return !(lhs < rhs);
             }
 
-            template<typename T, REQUIRES(Impl, INSTANCE_OF_IMPL < INSTANCE_OF(T))>
-            friend constexpr auto operator>=(const T &lhs, const Impl &rhs) noexcept(noexcept(lhs < rhs))
-            -> std::enable_if_t<!std::is_same_v<T, Impl>, bool>{
+            template<typename T, REQUIRES(Impl, INSTANCE_OF_IMPL < INSTANCE_OF(Comp<T>))>
+            friend constexpr auto operator>=(const Comp<T> &lhs, const Impl &rhs) noexcept(noexcept(lhs < rhs))
+            -> std::enable_if_t<!traits::same_templates_v<Comp<T>, Impl>, bool>{
                 return !(lhs < rhs);
             }
 
         private:
-
-            SynthesizedOperators() = default;
-            friend Impl;
+            ComparisonOperators() = default;
+            friend Parent;
         };
 
 
@@ -416,7 +440,8 @@ namespace iterators {
         template<typename Iterators>
         class ZipIterator
                 : public traits::iterator_category_from_value<traits::minimum_category_v<Iterators>>,
-                  public SynthesizedOperators<ZipIterator<Iterators>>,
+                  //public ComparisonOperators<ZipIterator<Iterators>, ZipIterator<Iterators>, ZipIterator>,
+                  public create_comp_operators<ZipIterator<Iterators>, ZipIterator>,
                   public PointerArithmetics<ZipIterator<Iterators>> {
         public:
             using value_type = traits::values_t<Iterators>;
@@ -658,7 +683,10 @@ namespace iterators {
         /**
          * @brief represents the unreachable end of an infinite sequence
          */
-        struct Unreachable {};
+        template<typename = void>
+        struct Unreachable {
+            bool operator==(Unreachable) const noexcept;
+        };
 
         /**
          * Signum function
@@ -676,7 +704,7 @@ namespace iterators {
          * @tparam Type of the counter (most of the time this is ```std::size_t```)
          */
         template<typename T>
-        struct CounterIterator : public SynthesizedOperators<CounterIterator<T>>,
+        struct CounterIterator : public create_comp_operators<CounterIterator<T>, CounterIterator, Unreachable>,
                                  public PointerArithmetics<CounterIterator<T>> {
             using value_type = T;
             using reference = T;
@@ -764,14 +792,14 @@ namespace iterators {
              * Equality comparison with Unreachable sentinel
              * @return false
              */
-            friend constexpr bool operator==(const CounterIterator &, Unreachable) noexcept {
+            friend constexpr bool operator==(const CounterIterator &, Unreachable<>) noexcept {
                 return false;
             }
 
             /**
              * @copydoc operator==(const CounterIterator &, Unreachable)
              */
-            friend constexpr bool operator==(Unreachable, const CounterIterator &) noexcept {
+            friend constexpr bool operator==(Unreachable<>, const CounterIterator &) noexcept {
                 return false;
             }
 
@@ -779,7 +807,7 @@ namespace iterators {
              * Less than comparison with Unreachable sentinel
              * @return true
              */
-            friend constexpr bool operator<(CounterIterator, Unreachable) noexcept {
+            friend constexpr bool operator<(CounterIterator, Unreachable<>) noexcept {
                 return true;
             }
 
@@ -787,7 +815,7 @@ namespace iterators {
              * @copybrief operator<(CounterIterator, Unreachable)
              * @return false
              */
-            friend constexpr bool operator<(Unreachable, CounterIterator) noexcept {
+            friend constexpr bool operator<(Unreachable<>, CounterIterator) noexcept {
                 return false;
             }
 
@@ -795,7 +823,7 @@ namespace iterators {
              * Greater than comparison with Unreachable sentinel
              * @return false
              */
-            friend constexpr bool operator>(CounterIterator, Unreachable) noexcept {
+            friend constexpr bool operator>(CounterIterator, Unreachable<>) noexcept {
                 return false;
             }
 
@@ -803,7 +831,7 @@ namespace iterators {
              * @copybrief operator>(CounterIterator, Unreachable)
              * @return true
              */
-            friend constexpr bool operator>(Unreachable, CounterIterator) noexcept {
+            friend constexpr bool operator>(Unreachable<>, CounterIterator) noexcept {
                 return true;
             }
 
@@ -870,7 +898,7 @@ namespace iterators {
             /**
              * @return Sentinel object representing the unreachable end of the sequence
              */
-            [[nodiscard]] static constexpr Unreachable end() noexcept {
+            [[nodiscard]] static constexpr Unreachable<> end() noexcept {
                 return Unreachable{};
             }
 
