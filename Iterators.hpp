@@ -370,7 +370,7 @@ namespace iterators {
          * @tparam Comps Operand types for which to create comparison operators
          */
         template<typename Impl, template<typename> typename ...Comps>
-        using create_comp_operators = ComparisonOperators<Impl, Impl, Comps...>;
+        using CreateCompOperators = ComparisonOperators<Impl, Impl, Comps...>;
 
         /**
          * @copydoc ComparisonOperators
@@ -455,7 +455,7 @@ namespace iterators {
         template<typename Iterators>
         class ZipIterator
                 : public traits::iterator_category_from_value<traits::minimum_category_v<Iterators>>,
-                  public create_comp_operators<ZipIterator<Iterators>, ZipIterator>,
+                  public CreateCompOperators<ZipIterator<Iterators>, ZipIterator>,
                   public PointerArithmetics<ZipIterator<Iterators>> {
         public:
             using value_type = traits::values_t<Iterators>;
@@ -718,7 +718,7 @@ namespace iterators {
          * @tparam Type of the counter (most of the time this is ```std::size_t```)
          */
         template<typename T>
-        struct CounterIterator : public create_comp_operators<CounterIterator<T>, CounterIterator, Unreachable>,
+        struct CounterIterator : public CreateCompOperators<CounterIterator<T>, CounterIterator, Unreachable>,
                                  public PointerArithmetics<CounterIterator<T>> {
             using value_type = T;
             using reference = T;
