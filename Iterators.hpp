@@ -234,6 +234,15 @@ namespace iterators {
             constexpr inline bool same_templates_v = same_templates<T, U>::value;
         }
 
+        /**
+         * @brief CRTP-class that provides additional pointer arithmetic operators synthesized from basic operators
+         * @details @copybrief
+         * Adds the following operators
+         * - postfix increment and decrement (requires the respective prefix operators)
+         * - array subscript operator[] (requires operator+ and dereference operator)
+         * - binary arithmetic operators (requires compound assignment operators)
+         * @tparam Impl Base class
+         */
         template<typename Impl>
         struct PointerArithmetics {
 
@@ -332,17 +341,18 @@ namespace iterators {
 
 
         /**
-         * @brief CRTP-class that provides additional operators synthesized from basic operators
+         * @brief CRTP-class that provides additional comparison operators synthesized from basic operators
          * @details @copybrief
          *
          * Adds the following operators
-         * - postfix increment and decrement (requires the respective prefix operators)
          * - inequality comparison (requires operator==)
          * - less than or equal comparison (requires operator>)
          * - greater than or equal comparison (requires operator<)
-         * - array subscript operator[] (requires operator+ and dereference operator)
-         * - binary arithmetic operators (requires compound assignment operators)
-         * @tparam Impl
+         * @note this class cannot be instantiated
+         * @tparam Impl Base class
+         * @tparam Parent Parent class from previous recursion
+         * @tparam Comp Operand type used in comparison
+         * @tparam Rest Additional operand types for further operators
          */
         template<typename Impl, typename Parent, template<typename> typename Comp,
                 template<typename> typename ...Rest>
@@ -354,6 +364,11 @@ namespace iterators {
             friend Impl;
         };
 
+        /**
+         * Alias for convenience. Inherit from this type to enable synthesized comparison operators
+         * @tparam Impl Base class
+         * @tparam Comps Operand types for which to create comparison operators
+         */
         template<typename Impl, template<typename> typename ...Comps>
         using create_comp_operators = ComparisonOperators<Impl, Impl, Comps...>;
 
@@ -440,7 +455,6 @@ namespace iterators {
         template<typename Iterators>
         class ZipIterator
                 : public traits::iterator_category_from_value<traits::minimum_category_v<Iterators>>,
-                  //public ComparisonOperators<ZipIterator<Iterators>, ZipIterator<Iterators>, ZipIterator>,
                   public create_comp_operators<ZipIterator<Iterators>, ZipIterator>,
                   public PointerArithmetics<ZipIterator<Iterators>> {
         public:
