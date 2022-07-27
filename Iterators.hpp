@@ -72,7 +72,9 @@
 
 #define INSTANCE_OF_IMPL INSTANCE_OF(Implementation)
 
-#define REQUIRES(TYPENAME, EXPRESSION) typename Implementation = TYPENAME, typename = std::void_t<decltype(EXPRESSION)>
+#define REQUIRES_IMPL(TYPENAME, EXPRESSION) typename Implementation = TYPENAME, typename = std::void_t<decltype(EXPRESSION)>
+
+#define REQUIRES(EXPRESSION) typename = std::void_t<decltype(EXPRESSION)>
 
 /**
  * @brief namespace containing zip and enumerate functions
@@ -272,7 +274,7 @@ namespace iterators {
              * @param n index
              * @return *(*this + n)
              */
-            template<REQUIRES(Impl, *(INSTANCE_OF_IMPL + INSTANCE_OF(typename Implementation::difference_type)))>
+            template<REQUIRES_IMPL(Impl, *(INSTANCE_OF_IMPL + INSTANCE_OF(typename Implementation::difference_type)))>
             constexpr auto operator[](typename Implementation::difference_type n) const
             noexcept(noexcept(*(std::declval<Impl>() + n))) {
                 return *(this->getImpl() + n);
@@ -283,7 +285,7 @@ namespace iterators {
              * @tparam Implementation SFINAE helper, do not specify explicitly
              * @return
              */
-            template<REQUIRES(Impl, ++INSTANCE_OF_IMPL)>
+            template<REQUIRES_IMPL(Impl, ++INSTANCE_OF_IMPL)>
             constexpr Impl operator++(int)
             noexcept(noexcept(++std::declval<Impl>()) && std::is_nothrow_copy_constructible_v<Impl>) {
                 auto tmp = this->getImpl();
@@ -296,7 +298,7 @@ namespace iterators {
              * @tparam Implementation SFINAE helper, do not specify explicitly
              * @return
              */
-            template<REQUIRES(Impl, --INSTANCE_OF_IMPL)>
+            template<REQUIRES_IMPL(Impl, --INSTANCE_OF_IMPL)>
             constexpr Impl operator--(int)
             noexcept(noexcept(--std::declval<Impl>()) && std::is_nothrow_copy_constructible_v<Impl>) {
                 auto tmp = this->getImpl();
@@ -311,7 +313,7 @@ namespace iterators {
              * @param n right hand side
              * @return Instance of Impl
              */
-            template<REQUIRES(Impl, INSTANCE_OF_IMPL += INSTANCE_OF(typename Implementation::difference_type)) >
+            template<REQUIRES_IMPL(Impl, INSTANCE_OF_IMPL += INSTANCE_OF(typename Implementation::difference_type)) >
             friend constexpr auto operator+(Impl it, typename Implementation::difference_type n)
             noexcept(noexcept(std::declval<Impl>() += n)) {
                 it += n;
@@ -325,7 +327,7 @@ namespace iterators {
              * @param it right hand side
              * @return Instance of Impl
              */
-            template<REQUIRES(Impl, INSTANCE_OF_IMPL += INSTANCE_OF(typename Implementation::difference_type))>
+            template<REQUIRES_IMPL(Impl, INSTANCE_OF_IMPL += INSTANCE_OF(typename Implementation::difference_type))>
             friend constexpr auto operator+(typename Implementation::difference_type n, Impl it)
             noexcept(noexcept(std::declval<Impl>() += n)) {
                 it += n;
@@ -339,7 +341,7 @@ namespace iterators {
              * @param n right hand side
              * @return Instance of Impl
              */
-            template<REQUIRES(Impl, INSTANCE_OF_IMPL -= INSTANCE_OF(typename Implementation::difference_type)) >
+            template<REQUIRES_IMPL(Impl, INSTANCE_OF_IMPL -= INSTANCE_OF(typename Implementation::difference_type)) >
             friend constexpr auto operator-(Impl it, typename Implementation::difference_type n)
             noexcept(noexcept(std::declval<Impl>() -= n)) {
                 it -= n;
@@ -380,7 +382,7 @@ namespace iterators {
              * @param other
              * @return true if this is not equal to other
              */
-            template<typename T, REQUIRES(Impl, INSTANCE_OF_IMPL == INSTANCE_OF(T))>
+            template<typename T, REQUIRES_IMPL(Impl, INSTANCE_OF_IMPL == INSTANCE_OF(T))>
             constexpr bool operator!=(const T &other) const noexcept(noexcept(INSTANCE_OF_IMPL == other)) {
                 return !(getImpl()== other);
             }
@@ -392,7 +394,7 @@ namespace iterators {
              * @param other
              * @return true if this is not greater than other
              */
-            template<typename T, REQUIRES(Impl, INSTANCE_OF_IMPL > INSTANCE_OF(T))>
+            template<typename T, REQUIRES_IMPL(Impl, INSTANCE_OF_IMPL > INSTANCE_OF(T))>
             constexpr bool operator<=(const T& rhs) const noexcept(noexcept(INSTANCE_OF_IMPL > rhs)) {
                 return !(getImpl()> rhs);
             }
@@ -404,7 +406,7 @@ namespace iterators {
              * @param other
              * @return true if this is not less than other
              */
-            template<typename T, REQUIRES(Impl, INSTANCE_OF_IMPL < INSTANCE_OF(T))>
+            template<typename T, REQUIRES_IMPL(Impl, INSTANCE_OF_IMPL < INSTANCE_OF(T))>
             constexpr bool operator>=(const T& rhs) const noexcept(noexcept(INSTANCE_OF_IMPL < rhs)) {
                 return !(getImpl() < rhs);
             }
@@ -469,6 +471,7 @@ namespace iterators {
 
             /**
              * Increments all underlying iterators by one
+             * @tparam Its SFINAE guard, do not specify
              * @return
              */
             template<typename Its = Iterators, typename = std::enable_if_t<traits::is_incrementable_v<Its>>>
@@ -555,10 +558,11 @@ namespace iterators {
              * @param other
              * @return
              */
-            template<typename Its, bool IsRandomAccessible = traits::is_random_accessible_v<Iterators>>
+            template<typename Its, bool IsRandomAccessible = traits::is_random_accessible_v<Iterators>, REQUIRES(
+                    ZipIterator::allLess(INSTANCE_OF(Iterators), INSTANCE_OF(Its))) >
             constexpr auto operator<(const ZipIterator<Its> &other) const
-            noexcept(noexcept(ZipIterator::allLess(std::declval<Iterators>(),
-                                                   other.getIterators()))) -> std::enable_if_t<IsRandomAccessible, bool> {
+            noexcept(noexcept(ZipIterator::allLess(INSTANCE_OF(Iterators), INSTANCE_OF(Its))))
+            -> std::enable_if_t<IsRandomAccessible, bool> {
                 return allLess(iterators, other.getIterators());
             }
 
@@ -569,9 +573,10 @@ namespace iterators {
              * @param other
              * @return
              */
-            template<typename Its, bool IsRandomAccessible = traits::is_random_accessible_v<Iterators>>
+            template<typename Its, bool IsRandomAccessible = traits::is_random_accessible_v<Iterators>, REQUIRES(
+                    ZipIterator::allGreater(INSTANCE_OF(Iterators), INSTANCE_OF(Its))) >
             constexpr auto operator>(const ZipIterator<Its> &other) const noexcept(noexcept(ZipIterator::allGreater(
-                    std::declval<Iterators>(), other.getIterators()))) -> std::enable_if_t<IsRandomAccessible, bool> {
+                    INSTANCE_OF(Iterators), INSTANCE_OF(Its)))) -> std::enable_if_t<IsRandomAccessible, bool> {
                 return allGreater(iterators, other.getIterators());
             }
 
@@ -584,15 +589,15 @@ namespace iterators {
              * @param other
              * @return
              */
-            template<typename Its>
-            constexpr auto operator==(const ZipIterator<Its> &other) const
-            noexcept(noexcept(ZipIterator::oneEqual(std::declval<Iterators>(), other.getIterators())))
-            -> decltype(ZipIterator::oneEqual(std::declval<Iterators>(), std::declval<Its>())) {
+            template<typename Its, REQUIRES(ZipIterator::oneEqual(INSTANCE_OF(Iterators), INSTANCE_OF(Its)))>
+            constexpr bool operator==(const ZipIterator<Its> &other) const
+            noexcept(noexcept(ZipIterator::oneEqual(std::declval<Iterators>(), other.getIterators()))) {
                 return oneEqual(iterators, other.getIterators());
             }
 
             /**
              * Dereferences all underlying iterators and returns a tuple of the resulting iterator reference types
+             * @tparam Its SFINAE guard, do not specify
              * @return
              */
             template<typename Its = Iterators, typename = std::enable_if_t<traits::is_dereferencible_v<Its>>>
