@@ -32,12 +32,13 @@
 #define BINARY_TUPLE_FOR_EACH(OPERATION, NAME) \
         template<typename Tuple1, typename Tuple2, std::size_t ...Idx> \
         static constexpr auto NAME##Impl(const Tuple1 &tuple1, const Tuple2 &tuple2, std::index_sequence<Idx...>) \
-        noexcept(noexcept((OPERATION))) { \
+        noexcept(noexcept((OPERATION))) -> decltype(OPERATION) { \
             return (OPERATION); \
         } \
         template<typename Tuple1, typename Tuple2> \
         static constexpr auto NAME(const Tuple1 &tuple1, const Tuple2 &tuple2) \
-        noexcept(noexcept(NAME##Impl(tuple1, tuple2, std::make_index_sequence<std::tuple_size_v<Tuple1>>{}))) { \
+        noexcept(noexcept(NAME##Impl(tuple1, tuple2, std::make_index_sequence<std::tuple_size_v<Tuple1>>{}))) \
+        -> decltype(NAME##Impl(tuple1, tuple2, std::make_index_sequence<std::tuple_size_v<Tuple1>>{})) { \
             static_assert(std::tuple_size_v<Tuple1> == std::tuple_size_v<Tuple2>); \
             return NAME##Impl(tuple1, tuple2, std::make_index_sequence<std::tuple_size_v<Tuple1>>{}); \
         }
@@ -433,12 +434,21 @@ namespace iterators {
                 : public traits::iterator_category_from_value<traits::minimum_category_v<Iterators>>,
                   public ComparisonOperators<ZipIterator<Iterators>, ZipIterator>,
                   public PointerArithmetics<ZipIterator<Iterators>> {
+
         public:
             using value_type = traits::values_t<Iterators>;
             using reference = value_type;
             using pointer = void;
             using difference_type = std::ptrdiff_t;
 
+        private:
+            BINARY_TUPLE_FOR_EACH_FOLD(ELEMENT1 == ELEMENT2, ||, oneEqual)
+            BINARY_TUPLE_FOR_EACH_FOLD(ELEMENT1 < ELEMENT2, &&, allLess)
+            BINARY_TUPLE_FOR_EACH_FOLD(ELEMENT1 > ELEMENT2, &&, allGreater)
+            BINARY_TUPLE_FOR_EACH(std::min<difference_type>({ELEMENT1 - ELEMENT2 ...}), minDifference)
+            Iterators iterators;
+
+        public:
             using PointerArithmetics<ZipIterator>::operator++;
             using PointerArithmetics<ZipIterator>::operator--;
 
@@ -566,8 +576,9 @@ namespace iterators {
              * @return
              */
             template<typename Its>
-            constexpr bool operator==(const ZipIterator<Its> &other) const
-            noexcept(noexcept(ZipIterator::oneEqual(std::declval<Iterators>(), other.getIterators()))) {
+            constexpr auto operator==(const ZipIterator<Its> &other) const
+            noexcept(noexcept(ZipIterator::oneEqual(std::declval<Iterators>(), other.getIterators())))
+            -> decltype(ZipIterator::oneEqual(std::declval<Iterators>(), std::declval<Its>())) {
                 return oneEqual(iterators, other.getIterators());
             }
 
@@ -586,17 +597,6 @@ namespace iterators {
             constexpr auto getIterators() const noexcept -> const Iterators& {
                 return iterators;
             }
-
-        private:
-            BINARY_TUPLE_FOR_EACH_FOLD(ELEMENT1 == ELEMENT2, ||, oneEqual)
-
-            BINARY_TUPLE_FOR_EACH_FOLD(ELEMENT1 < ELEMENT2, &&, allLess)
-
-            BINARY_TUPLE_FOR_EACH_FOLD(ELEMENT1 > ELEMENT2, &&, allGreater)
-
-            BINARY_TUPLE_FOR_EACH(std::min<difference_type>({ELEMENT1 - ELEMENT2 ...}), minDifference)
-
-            Iterators iterators;
         };
 
         /**
@@ -675,9 +675,7 @@ namespace iterators {
          * @brief represents the unreachable end of an infinite sequence
          */
         template<typename = void>
-        struct Unreachable {
-            bool operator==(Unreachable) const noexcept;
-        };
+        struct Unreachable {};
 
         /**
          * Signum function
