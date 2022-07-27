@@ -549,7 +549,6 @@ namespace iterators {
              */
             template<bool IsRandomAccessible = traits::is_random_accessible_v<Iterators>>
             constexpr auto operator-(const ZipIterator &other) const
-            noexcept(noexcept(ZipIterator::minDifference(std::declval<Iterators>(), other.iterators)))
             -> std::enable_if_t<IsRandomAccessible, difference_type> {
                 return minDifference(iterators, other.iterators);
             }
@@ -576,9 +575,9 @@ namespace iterators {
              * @return
              */
             template<typename Its, bool IsRandomAccessible = traits::is_random_accessible_v<Iterators>>
-            constexpr auto operator>(const ZipIterator<Its> &other) const noexcept(noexcept(other < other))
-            -> std::enable_if_t<IsRandomAccessible, bool> {
-                return other < *this;
+            constexpr auto operator>(const ZipIterator<Its> &other) const noexcept(noexcept(ZipIterator::allGreater(
+                    std::declval<Iterators>(), other.getIterators()))) -> std::enable_if_t<IsRandomAccessible, bool> {
+                return allGreater(iterators, other.getIterators());
             }
 
             ///@}
@@ -616,6 +615,8 @@ namespace iterators {
             BINARY_TUPLE_FOR_EACH_FOLD(ELEMENT1 == ELEMENT2, ||, oneEqual)
 
             BINARY_TUPLE_FOR_EACH_FOLD(ELEMENT1 < ELEMENT2, &&, allLess)
+
+            BINARY_TUPLE_FOR_EACH_FOLD(ELEMENT1 > ELEMENT2, &&, allGreater)
 
             BINARY_TUPLE_FOR_EACH(std::min<difference_type>({ELEMENT1 - ELEMENT2 ...}), minDifference)
 
