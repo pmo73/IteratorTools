@@ -405,6 +405,24 @@ TEST(Iterators, random_access_operators) {
     EXPECT_EQ(zEnd - zBegin, 3);
 }
 
+TEST(Iterators, comparisons_with_different_types) {
+    using namespace iterators;
+    int numbers[] = {7, 8, 9};
+    auto curr = enumerate(numbers).begin();
+    auto cCurr = const_enumerate(numbers).begin();
+    auto end = enumerate(numbers).end();
+    EXPECT_TRUE(curr <= cCurr);
+    EXPECT_FALSE(cCurr < cCurr);
+    ++curr;
+    EXPECT_TRUE(cCurr <= curr);
+    EXPECT_TRUE(curr > cCurr);
+    EXPECT_TRUE(curr >= cCurr);
+    EXPECT_TRUE(curr != cCurr);
+    EXPECT_TRUE(cCurr < curr);
+    EXPECT_TRUE(curr != end);
+    EXPECT_TRUE(end != cCurr);
+}
+
 TEST(Iterators, SFINAE_forward_operators) {
     using namespace iterators;
     using ForwardZipIt = decltype(zip(std::declval<std::unordered_map<int, std::string>>(),

@@ -26,17 +26,10 @@ TEST(CounterIterator, basic) {
 TEST(CounterIterator, sentinel) {
     using namespace iterators::impl;
     CounterIterator test(3);
-    EXPECT_NE(test, Unreachable{});
-    EXPECT_NE(Unreachable{}, test);
+    EXPECT_TRUE(test != Unreachable{});
+    EXPECT_TRUE(Unreachable{} != test);
     test += 1000;
-    EXPECT_TRUE(test < Unreachable{});
-    EXPECT_TRUE(test <= Unreachable{});
-    EXPECT_FALSE(test > Unreachable{});
-    EXPECT_FALSE(test >= Unreachable{});
-    EXPECT_TRUE(Unreachable{} > test);
-    EXPECT_TRUE(Unreachable{} >= test);
-    EXPECT_FALSE(Unreachable{} < test);
-    EXPECT_FALSE(Unreachable{} <= test);
+    EXPECT_TRUE(test != Unreachable{});
 }
 
 TEST(CounterIterator, less_greater_difference_basic) {
