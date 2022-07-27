@@ -339,7 +339,6 @@ namespace iterators {
             friend Impl;
         };
 
-
         /**
          * @brief CRTP-class that provides additional comparison operators synthesized from basic operators
          * @details @copybrief
@@ -350,33 +349,10 @@ namespace iterators {
          * - greater than or equal comparison (requires operator<)
          * @note this class cannot be instantiated
          * @tparam Impl Base class
-         * @tparam Parent Parent class from previous recursion
          * @tparam Comp Operand type used in comparison
-         * @tparam Rest Additional operand types for further operators
          */
-        template<typename Impl, typename Parent, template<typename> typename Comp,
-                template<typename> typename ...Rest>
-        struct ComparisonOperators
-                : public ComparisonOperators<Impl, ComparisonOperators<Impl, Parent, Comp, Rest...>, Comp>,
-                  public ComparisonOperators<Impl, ComparisonOperators<Impl, Parent, Comp, Rest...>, Rest...> {
-        private:
-            ComparisonOperators() = default;
-            friend Impl;
-        };
-
-        /**
-         * Alias for convenience. Inherit from this type to enable synthesized comparison operators
-         * @tparam Impl Base class
-         * @tparam Comps Operand types for which to create comparison operators
-         */
-        template<typename Impl, template<typename> typename ...Comps>
-        using CreateCompOperators = ComparisonOperators<Impl, Impl, Comps...>;
-
-        /**
-         * @copydoc ComparisonOperators
-         */
-        template<typename Impl, typename Parent, template<typename> typename Comp>
-        struct ComparisonOperators<Impl, Parent, Comp> {
+        template<typename Impl, template<typename> typename Comp>
+        struct ComparisonOperators {
             /**
              * Inequality comparison
              * @tparam T type of right hand side
@@ -433,7 +409,7 @@ namespace iterators {
 
         private:
             ComparisonOperators() = default;
-            friend Parent;
+            friend Impl;
         };
 
 
@@ -455,7 +431,7 @@ namespace iterators {
         template<typename Iterators>
         class ZipIterator
                 : public traits::iterator_category_from_value<traits::minimum_category_v<Iterators>>,
-                  public CreateCompOperators<ZipIterator<Iterators>, ZipIterator>,
+                  public ComparisonOperators<ZipIterator<Iterators>, ZipIterator>,
                   public PointerArithmetics<ZipIterator<Iterators>> {
         public:
             using value_type = traits::values_t<Iterators>;
@@ -719,7 +695,8 @@ namespace iterators {
          * @tparam Type of the counter (most of the time this is ```std::size_t```)
          */
         template<typename T>
-        struct CounterIterator : public CreateCompOperators<CounterIterator<T>, CounterIterator, Unreachable>,
+        struct CounterIterator : public ComparisonOperators<CounterIterator<T>, CounterIterator>,
+                                 public ComparisonOperators<CounterIterator<T>, Unreachable>,
                                  public PointerArithmetics<CounterIterator<T>> {
             using value_type = T;
             using reference = T;
