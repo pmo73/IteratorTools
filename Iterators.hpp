@@ -111,8 +111,27 @@ namespace iterators {
             template<typename T>
             struct is_dereferencible<T, std::void_t<decltype(*std::declval<T>())>> : std::true_type {};
 
+            template<typename ...Ts>
+            struct is_dereferencible<std::tuple<Ts...>, void> {
+                static constexpr bool value = (is_dereferencible<Ts>::value && ...);
+            };
+
             template<typename T>
             constexpr inline bool is_dereferencible_v = is_dereferencible<T>::value;
+
+            template<typename T, typename = std::void_t<>>
+            struct is_incrementable : std::false_type {};
+
+            template<typename T>
+            struct is_incrementable<T, std::void_t<decltype(++REFERENCE(T))>> : std::true_type {};
+
+            template<typename ...Ts>
+            struct is_incrementable<std::tuple<Ts...>, void> {
+                static constexpr bool value = (is_incrementable<Ts>::value && ...);
+            };
+
+            template<typename T>
+            constexpr inline bool is_incrementable_v = is_incrementable<T>::value;
 
             template<typename T, bool B>
             struct dereference {
@@ -452,6 +471,7 @@ namespace iterators {
              * Increments all underlying iterators by one
              * @return
              */
+            template<typename Its = Iterators, typename = std::enable_if_t<traits::is_incrementable_v<Its>>>
             constexpr ZipIterator &operator++() noexcept(traits::is_nothrow_incrementible_v<Iterators>) {
                 std::apply([](auto &&...it) { (++it, ...); }, iterators);
                 return *this;
@@ -575,6 +595,7 @@ namespace iterators {
              * Dereferences all underlying iterators and returns a tuple of the resulting iterator reference types
              * @return
              */
+            template<typename Its = Iterators, typename = std::enable_if_t<traits::is_dereferencible_v<Its>>>
             constexpr auto operator*() const noexcept(traits::is_nothrow_dereferencible_v<Iterators>) {
                 return std::apply([](auto &&...it) { return value_type(*it...); }, iterators);
             }

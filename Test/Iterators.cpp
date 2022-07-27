@@ -496,6 +496,30 @@ TEST(Iterators, SFINAE_random_access_operators) {
     EXPECT_TRUE(has_subsc_v<RandomAccessIterator>);
 }
 
+TEST(Iterators, SFINAE_invalid_iterators) {
+    using namespace iterators::impl;
+    using BrokenIt = ZipIterator<std::tuple<int *, int>>;
+    EXPECT_TRUE(has_pre_inc_v<BrokenIt>);
+    EXPECT_TRUE(has_post_inc_v<BrokenIt>);
+    EXPECT_TRUE(has_eq_v<BrokenIt>);
+    EXPECT_TRUE(has_ineq_v<BrokenIt>);
+
+    EXPECT_FALSE(has_deref_v<BrokenIt>);
+    EXPECT_FALSE(has_pre_dec_v<BrokenIt>);
+    EXPECT_FALSE(has_post_dec_v<BrokenIt>);
+    EXPECT_FALSE(has_plus_comp_v<BrokenIt>);
+    EXPECT_FALSE(has_minus_comp_v<BrokenIt>);
+    EXPECT_FALSE(has_plus_left_v<BrokenIt>);
+    EXPECT_FALSE(has_plus_right_v<BrokenIt>);
+    EXPECT_FALSE(has_minus_left_v<BrokenIt>);
+    EXPECT_FALSE(has_difference_v<BrokenIt>);
+    EXPECT_FALSE(has_less_v<BrokenIt>);
+    EXPECT_FALSE(has_greater_v<BrokenIt>);
+    EXPECT_FALSE(has_leq_v<BrokenIt>);
+    EXPECT_FALSE(has_geq_v<BrokenIt>);
+    EXPECT_FALSE(has_subsc_v<BrokenIt>);
+}
+
 TEST(Iterators, stl_algos) {
     using namespace iterators;
     std::array numbers{4, 2, 3, 1, 0};
