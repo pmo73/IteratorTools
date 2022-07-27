@@ -12,6 +12,14 @@ struct has_##NAME<T, std::void_t<decltype(EXPRESSION)>> : std::true_type {}; \
 template<typename T>             \
 constexpr inline bool has_##NAME##_v = has_##NAME<T>::value;
 
+#define DETECT_BINARY(NAME, EXPRESSION) \
+template<typename T, typename U, typename = std::void_t<>> \
+struct has_##NAME : std::false_type {};\
+template<typename T, typename U>             \
+struct has_##NAME<T, U, std::void_t<decltype(EXPRESSION)>> : std::true_type {}; \
+template<typename T, typename U>             \
+constexpr inline bool has_##NAME##_v = has_##NAME<T, U>::value;
+
 
 class MustNotCopy {
 public:

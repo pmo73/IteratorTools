@@ -3,6 +3,7 @@
 #include <list>
 #include <string>
 #include <type_traits>
+#include <deque>
 #include <unordered_map>
 #include "Iterators.hpp"
 #include "utils.hpp"
@@ -27,6 +28,13 @@ DETECT(eq, INSTANCE_OF(T) == INSTANCE_OF(T))
 DETECT(ineq, INSTANCE_OF(T) != INSTANCE_OF(T))
 DETECT(subsc, INSTANCE_OF(T)[INSTANCE_OF(std::size_t)])
 DETECT(deref, *INSTANCE_OF(T))
+
+DETECT_BINARY(eq_with, INSTANCE_OF(T) == INSTANCE_OF(U))
+DETECT_BINARY(neq_with, INSTANCE_OF(T) != INSTANCE_OF(U))
+DETECT_BINARY(less_with, INSTANCE_OF(T) < INSTANCE_OF(U))
+DETECT_BINARY(greater_with, INSTANCE_OF(T) > INSTANCE_OF(U))
+DETECT_BINARY(le_with, INSTANCE_OF(T) <= INSTANCE_OF(U))
+DETECT_BINARY(ge_with, INSTANCE_OF(T) >= INSTANCE_OF(U))
 
 template<typename Vec1, typename Vec2>
 constexpr auto dot(const Vec1 &x, const Vec2 &y) {
@@ -518,6 +526,38 @@ TEST(Iterators, SFINAE_invalid_iterators) {
     EXPECT_FALSE(has_leq_v<BrokenIt>);
     EXPECT_FALSE(has_geq_v<BrokenIt>);
     EXPECT_FALSE(has_subsc_v<BrokenIt>);
+}
+
+TEST(Iterators, SFINAE_differnt_zip_types) {
+    using namespace iterators::impl;
+    using NormaleIt = ZipIterator<std::tuple<int*>>;
+    using ConstIt = ZipIterator<std::tuple<const int*>>;
+    using DequeIt = ZipIterator<std::tuple<decltype(std::declval<std::deque<double>>().begin())>>;
+    auto res = has_eq_with_v<NormaleIt, ConstIt>;
+    EXPECT_TRUE(res);
+    res = has_neq_with_v<NormaleIt, ConstIt>;
+    EXPECT_TRUE(res);
+    res = has_less_with_v<NormaleIt, ConstIt>;
+    EXPECT_TRUE(res);
+    res = has_greater_with_v<NormaleIt, ConstIt>;
+    EXPECT_TRUE(res);
+    res = has_le_with_v<NormaleIt, ConstIt>;
+    EXPECT_TRUE(res);
+    res = has_ge_with_v<NormaleIt, ConstIt>;
+    EXPECT_TRUE(res);
+
+    res = has_eq_with_v<NormaleIt, DequeIt>;
+    EXPECT_FALSE(res);
+    res = has_neq_with_v<NormaleIt, DequeIt>;
+    EXPECT_FALSE(res);
+    res = has_less_with_v<NormaleIt, DequeIt>;
+    EXPECT_FALSE(res);
+    res = has_greater_with_v<NormaleIt, DequeIt>;
+    EXPECT_FALSE(res);
+    res = has_le_with_v<NormaleIt, DequeIt>;
+    EXPECT_FALSE(res);
+    res = has_ge_with_v<NormaleIt, DequeIt>;
+    EXPECT_FALSE(res);
 }
 
 TEST(Iterators, stl_algos) {
