@@ -2,7 +2,7 @@ name: documentation
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "DoxyMainPage" ]
   workflow_dispatch:
 
 env:
@@ -18,7 +18,9 @@ jobs:
       - name: create output dir
         run: mkdir -p ${{ env.DOCS_OUT_DIR }}
       - name: run doxygen
-        run: doxygen .github/workflows/Doxyfile
+        run: |
+          cat README.md > sed "s/\`c++/\`/" > README.md # prepare README for nicer display of main page in Doxygen
+          doxygen .github/workflows/Doxyfile
       - name: deploy
         uses: JamesIves/github-pages-deploy-action@v4
         with:
