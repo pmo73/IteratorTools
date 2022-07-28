@@ -589,6 +589,27 @@ TEST(Iterators, noexcept_stl_containers) {
     EXPECT_EQ(noexcept(*zipIt), noexcept(*nIt) && noexcept(*sIt) && noexcept(*mapIt));
 }
 
+TEST(Iterators, noexcept_true) {
+    using namespace iterators;
+    int numbers[] = {1, 2, 3};
+    auto begin = enumerate(numbers).begin();
+    auto end = begin + 2;
+    EXPECT_TRUE(noexcept(begin == end));
+    EXPECT_TRUE(noexcept(begin != end));
+    EXPECT_TRUE(noexcept(begin < end));
+    EXPECT_TRUE(noexcept(begin > end));
+    EXPECT_TRUE(noexcept(begin <= end));
+    EXPECT_TRUE(noexcept(begin >= end));
+    EXPECT_TRUE(noexcept(begin[1]));
+    EXPECT_TRUE(noexcept(*begin));
+    EXPECT_TRUE(noexcept(1 + begin + 1));
+    EXPECT_TRUE(noexcept(begin - 1));
+    EXPECT_TRUE(noexcept(begin += 1));
+    EXPECT_TRUE(noexcept(begin -= 1));
+    EXPECT_TRUE(noexcept(++begin++));
+    EXPECT_TRUE(noexcept(--begin--));
+}
+
 TEST(Iterators, noexcept_throwing_iterator) {
     using namespace iterators;
     std::array numbers{1, 2, 3};
