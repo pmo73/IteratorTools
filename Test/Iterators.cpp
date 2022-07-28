@@ -422,6 +422,8 @@ TEST(Iterators, comparisons_with_different_types) {
     EXPECT_TRUE(curr <= cCurr);
     EXPECT_FALSE(cCurr < cCurr);
     ++curr;
+    EXPECT_EQ(curr - cCurr, 1);
+    EXPECT_EQ(cCurr - curr, -1);
     EXPECT_TRUE(cCurr <= curr);
     EXPECT_TRUE(curr > cCurr);
     EXPECT_TRUE(curr >= cCurr);

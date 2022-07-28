@@ -277,7 +277,7 @@ namespace iterators {
             /**
              * Postfix increment. Synthesized from prefix increment
              * @tparam Implementation SFINAE helper, do not specify explicitly
-             * @return
+             * @return Instance of Impl
              */
             template<REQUIRES_IMPL(Impl, ++INSTANCE_OF_IMPL)>
             constexpr Impl operator++(int)
@@ -290,7 +290,7 @@ namespace iterators {
             /**
              * Postfix decrement. Synthesized from prefix decrement
              * @tparam Implementation SFINAE helper, do not specify explicitly
-             * @return
+             * @return Instance of Impl
              */
             template<REQUIRES_IMPL(Impl, --INSTANCE_OF_IMPL)>
             constexpr Impl operator--(int)
@@ -346,7 +346,7 @@ namespace iterators {
              * Inequality comparison
              * @tparam T type of right hand side
              * @tparam Implementation SFINAE helper, do not specify explicitly
-             * @param other
+             * @param other right hand side
              * @return true if this is not equal to other
              */
             template<typename T, REQUIRES_IMPL(Impl, INSTANCE_OF_IMPL == INSTANCE_OF(T))>
@@ -358,7 +358,7 @@ namespace iterators {
              * Less than or equal comparison
              * @tparam T type of right hand side
              * @tparam Implementation SFINAE helper, do not specify explicitly
-             * @param other
+             * @param other right hand side
              * @return true if this is not greater than other
              */
             template<typename T, REQUIRES_IMPL(Impl, INSTANCE_OF_IMPL > INSTANCE_OF(T))>
@@ -370,7 +370,7 @@ namespace iterators {
              * Greater than or equal comparison
              * @tparam T type of right hand side
              * @tparam Implementation SFINAE helper, do not specify explicitly
-             * @param other
+             * @param other right hand side
              * @return true if this is not less than other
              */
             template<typename T, REQUIRES_IMPL(Impl, INSTANCE_OF_IMPL < INSTANCE_OF(T))>
@@ -396,7 +396,9 @@ namespace iterators {
          * @details @copybrief
          * ZipIterators only support the operators of the least powerful underling iterator. Zipping a random access
          * iterator (e.g. from std::vector) and a bidirectional iterator (e.g. from std::list) results in a
-         * bidirectional iterator. ZipIterators return a tuple of references to the range elements. When using
+         * bidirectional iterator. All operators are SFINAE friendly.
+         *
+         * ZipIterators return a tuple of references to the range elements. When using
          * structured bindings, no additional reference binding is necessary.
          *
          * Let ```z``` be a ZipIterator composed from two ```std::vector<int>```
@@ -438,7 +440,7 @@ namespace iterators {
             /**
              * Increments all underlying iterators by one
              * @tparam Its SFINAE guard, do not specify
-             * @return
+             * @return reference to this
              */
             template<typename Its = Iterators, typename = std::enable_if_t<traits::is_incrementable_v<Its>>>
             constexpr ZipIterator &operator++() noexcept(traits::is_nothrow_incrementible_v<Iterators>) {
@@ -456,8 +458,8 @@ namespace iterators {
             /**
              * Decrements all underlying iterators by one. Only available if all iterators support at least
              * bidirectional access
-             * @tparam IsBidirectional
-             * @return
+             * @tparam IsBidirectional SFINAE guard, do not specify
+             * @return reference to this
              */
             template<bool IsBidirectional = traits::is_bidirectional_v<Iterators>>
             constexpr auto operator--() noexcept(traits::is_nothrow_decrementible_v<Iterators>)
@@ -478,9 +480,9 @@ namespace iterators {
             /**
              * Compound assignment increment. Increments all underlying iterators by n. Only available if all underlying
              * iterators support at least random access
-             * @tparam IsRandomAccessible
-             * @param n
-             * @return
+             * @tparam IsRandomAccessible SFINAE guard, do not specify
+             * @param n increment
+             * @return reference to this
              */
             template<bool IsRandomAccessible = traits::is_random_accessible_v<Iterators>>
             constexpr auto operator+=(difference_type n) noexcept(traits::is_nothrow_compound_assignable_plus_v<Iterators>)
@@ -492,9 +494,9 @@ namespace iterators {
             /**
              * Compound assignment decrement. Decrements all underlying iterators by n. Only available if all underlying
              * iterators support at least random access
-             * @tparam IsRandomAccessible
-             * @param n
-             * @return
+             * @tparam IsRandomAccessible SFINAE guard, do not specify
+             * @param n decrement
+             * @return reference to this
              */
             template<bool IsRandomAccessible = traits::is_random_accessible_v<Iterators>>
             constexpr auto operator-=(difference_type n) noexcept(traits::is_nothrow_compound_assignable_minus_v<Iterators>)
@@ -505,27 +507,30 @@ namespace iterators {
 
             /**
              * Returns the minimum pairwise difference n between all underlying iterators of *this and other, such that
-             * other + n == *this
+             * (other + n) == *this
              * Only available if all underlying iterators support at least random access
-             * @tparam IsRandomAccessible
-             * @param other
-             * @return
+             * @tparam Its Iterator types of right hand side
+             * @tparam IsRandomAccessible SFINAE guard, do not specify
+             * @param other right hand side
+             * @return integer n such that (other + n) == *this
              */
-            template<bool IsRandomAccessible = traits::is_random_accessible_v<Iterators>>
-            constexpr auto operator-(const ZipIterator &other) const
+            template<typename Its, bool IsRandomAccessible = traits::is_random_accessible_v<Iterators>, REQUIRES(
+                    ZipIterator::minDifference(INSTANCE_OF(Iterators), INSTANCE_OF(Its)))>
+            constexpr auto operator-(const ZipIterator<Its> &other) const
             -> std::enable_if_t<IsRandomAccessible, difference_type> {
-                return minDifference(iterators, other.iterators);
+                return minDifference(iterators, other.getIterators());
             }
 
             /**
-             * Returns true if all underlying iterators compare less to the corresponding iterators from other
+             * Pairwise less comparison of underlying iterators
              * Only available if all underlying iterators support at least random access
-             * @tparam IsRandomAccessible
-             * @param other
-             * @return
+             * @tparam Its Iterator types of right hand side
+             * @tparam IsRandomAccessible SFINAE guard, do not specify
+             * @param other right hand side
+             * @return true if all underlying iterators compare less to the corresponding iterators from other
              */
             template<typename Its, bool IsRandomAccessible = traits::is_random_accessible_v<Iterators>, REQUIRES(
-                    ZipIterator::allLess(INSTANCE_OF(Iterators), INSTANCE_OF(Its))) >
+                    ZipIterator::allLess(INSTANCE_OF(Iterators), INSTANCE_OF(Its)))>
             constexpr auto operator<(const ZipIterator<Its> &other) const
             noexcept(noexcept(ZipIterator::allLess(INSTANCE_OF(Iterators), INSTANCE_OF(Its))))
             -> std::enable_if_t<IsRandomAccessible, bool> {
@@ -533,11 +538,12 @@ namespace iterators {
             }
 
             /**
-             * Returns true if all underlying iterators compare greater to the corresponding iterators from other
+             * Pairwise grater comparison of underlying iterators
              * Only available if all underlying iterators support at least random access
-             * @tparam IsRandomAccessible
-             * @param other
-             * @return
+             * @tparam Its Iterator types of right hand side
+             * @tparam IsRandomAccessible SFINAE guard, do not specify
+             * @param other right hand side
+             * @return true if all underlying iterators compare greater to the corresponding iterators from other
              */
             template<typename Its, bool IsRandomAccessible = traits::is_random_accessible_v<Iterators>, REQUIRES(
                     ZipIterator::allGreater(INSTANCE_OF(Iterators), INSTANCE_OF(Its))) >
@@ -549,11 +555,10 @@ namespace iterators {
             ///@}
 
             /**
-             * Returns true if at least one underlying iterator compares equal to the corresponding iterator from
-             * other.
-             * @tparam Its
-             * @param other
-             * @return
+             * Pairwise equality comparison of underlying iterators
+             * @tparam Its Iterator types of right hand side
+             * @param other right hand side
+             * @return true if at least one underlying iterator compares equal to the corresponding iterator from other
              */
             template<typename Its, REQUIRES(ZipIterator::oneEqual(INSTANCE_OF(Iterators), INSTANCE_OF(Its)))>
             constexpr bool operator==(const ZipIterator<Its> &other) const
@@ -562,9 +567,9 @@ namespace iterators {
             }
 
             /**
-             * Dereferences all underlying iterators and returns a tuple of the resulting iterator reference types
+             * Dereferences all underlying iterators and returns a tuple of the resulting range reference types
              * @tparam Its SFINAE guard, do not specify
-             * @return
+             * @return tuple of references to range elements
              */
             template<typename Its = Iterators, typename = std::enable_if_t<traits::is_dereferencible_v<Its>>>
             constexpr auto operator*() const noexcept(traits::is_nothrow_dereferencible_v<Iterators>) {
