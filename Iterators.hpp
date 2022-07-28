@@ -700,7 +700,7 @@ namespace iterators {
 
             /**
              * Increments value by increment
-             * @return
+             * @return reference to this
              */
             constexpr CounterIterator &operator++() noexcept {
                 counter += increment;
@@ -709,7 +709,7 @@ namespace iterators {
 
             /**
              * Decrements value by increment
-             * @return
+             * @return reference to this
              */
             constexpr CounterIterator &operator--() noexcept {
                 counter -= increment;
@@ -719,7 +719,7 @@ namespace iterators {
             /**
              * Compound assignment increment. Increments value by n times increment
              * @param n number of steps
-             * @return
+             * @return reference to this
              */
             constexpr CounterIterator &operator+=(difference_type n) noexcept {
                 counter += n * increment;
@@ -729,7 +729,7 @@ namespace iterators {
             /**
              * Compound assignment decrement. Increments value by n times increment
              * @param n number of steps
-             * @return
+             * @return reference to this
              */
             constexpr CounterIterator &operator-=(difference_type n) noexcept {
                 counter -= n * increment;
@@ -738,11 +738,11 @@ namespace iterators {
 
             /**
              * Difference between two CounterIterators
-             * @param other
-             * @return integer ```n``` such that ```other + n <= *this```
+             * @param other right hand side
+             * @return integer ```n``` with the smallest possible absolute value such that ```other + n <= *this```
              * @note When other has the same increment as ```*this```, then the returned value is guaranteed to
              * fulfil ```other + n == *this```. In the following example, this is not the case:
-             * ```c++
+             * ```
              * CounterIterator a(8, 1);
              * CounterIterator b(4, 3);
              * auto diff = a - b; // yields 1 since b + 1 <= a
@@ -754,7 +754,7 @@ namespace iterators {
 
             /**
              * Equality comparison.
-             * @param other
+             * @param other right hand side
              * @return true if counter of left and right hand side are equal
              */
             constexpr bool operator==(const CounterIterator &other) const noexcept {
@@ -781,11 +781,15 @@ namespace iterators {
             }
 
             /**
-             * Less comparison
-             * @param other
-             * @return returns true if there exists an integer ```n``` such
-             * that ```(*this) + n = other```
-             * @note If increment is negative then equality comparison is done by multiplying both side with -1.
+             * Less comparison of internal counters with respect to increment of this instance
+             * @param other right hand side
+             * @return true if
+             * ```
+             * sgn(increment) **this < *other sgn(increment)
+             * ```
+             * where ```sgn``` is the signum
+             * function
+             * @note If increment is negative then both sides of the inequality are multiplied with -1.
              * For example: let ```it1 = 5``` and ```it2 = -2``` be two CounterIterators where ```it1``` has negative
              * increment. Then ```it1 < it2``` is true.
              */
@@ -794,11 +798,14 @@ namespace iterators {
             }
 
             /**
-             * Greater comparison
-             * @param other
-             * @return returns true if there exists an integer ```n``` such
-             * that ```(*this) - n = other```
-             * @note If increment is negative then equality comparison is done by multiplying both side with -1.
+             * Greater comparison of internal counters with respect to increment of this instance
+             * @param other right hand side
+             * @return true if
+             * ```
+             * sgn(increment) **this > *other sgn(increment)
+             * ```
+             * where ```sgn``` is the signum
+             * @note If increment is negative then both sides of the inequality are multiplied with -1.
              * For example: let ```it1 = 5``` and ```it2 = -2``` be two CounterIterators where ```it1``` has negative
              * increment. Then ```it1 > it2``` is false.
              */
@@ -874,7 +881,7 @@ namespace iterators {
      * the overall range
      * @tparam Iterable Container types that support iteration
      * @param iterable Arbitrary number of containers
-     * @return zip-container class that provides begin and end members to be used in range based for-loops
+     * @return impl::ZipView class that provides begin and end members to be used in range based for-loops
      * @relatesalso impl::ZipView
      */
     template<typename ...Iterable>
