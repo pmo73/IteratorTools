@@ -32,12 +32,13 @@
 #define BINARY_TUPLE_FOR_EACH(OPERATION, NAME) \
         template<typename Tuple1, typename Tuple2, std::size_t ...Idx> \
         static constexpr auto NAME##Impl(const Tuple1 &tuple1, const Tuple2 &tuple2, std::index_sequence<Idx...>) \
-        noexcept(noexcept((OPERATION))) { \
+        noexcept(noexcept((OPERATION))) -> decltype(OPERATION) { \
             return (OPERATION); \
         } \
         template<typename Tuple1, typename Tuple2> \
         static constexpr auto NAME(const Tuple1 &tuple1, const Tuple2 &tuple2) \
-        noexcept(noexcept(NAME##Impl(tuple1, tuple2, std::make_index_sequence<std::tuple_size_v<Tuple1>>{}))) { \
+        noexcept(noexcept(NAME##Impl(tuple1, tuple2, std::make_index_sequence<std::tuple_size_v<Tuple1>>{}))) \
+        -> decltype(NAME##Impl(tuple1, tuple2, std::make_index_sequence<std::tuple_size_v<Tuple1>>{})) { \
             static_assert(std::tuple_size_v<Tuple1> == std::tuple_size_v<Tuple2>); \
             return NAME##Impl(tuple1, tuple2, std::make_index_sequence<std::tuple_size_v<Tuple1>>{}); \
         }
@@ -66,6 +67,14 @@
         constexpr inline std::size_t type_to_value_v = type_to_value<T>::value; \
         template<std::size_t V>                                                 \
         using value_to_type_t = typename value_to_type<V>::type;
+
+#define INSTANCE_OF(TYPENAME) std::declval<TYPENAME>()
+
+#define INSTANCE_OF_IMPL INSTANCE_OF(Implementation)
+
+#define REQUIRES_IMPL(TYPENAME, EXPRESSION) typename Implementation = TYPENAME, typename = std::void_t<decltype(EXPRESSION)>
+
+#define REQUIRES(EXPRESSION) typename = std::void_t<decltype(EXPRESSION)>
 
 /**
  * @brief namespace containing zip and enumerate functions
@@ -104,8 +113,27 @@ namespace iterators {
             template<typename T>
             struct is_dereferencible<T, std::void_t<decltype(*std::declval<T>())>> : std::true_type {};
 
+            template<typename ...Ts>
+            struct is_dereferencible<std::tuple<Ts...>, void> {
+                static constexpr bool value = (is_dereferencible<Ts>::value && ...);
+            };
+
             template<typename T>
             constexpr inline bool is_dereferencible_v = is_dereferencible<T>::value;
+
+            template<typename T, typename = std::void_t<>>
+            struct is_incrementable : std::false_type {};
+
+            template<typename T>
+            struct is_incrementable<T, std::void_t<decltype(++REFERENCE(T))>> : std::true_type {};
+
+            template<typename ...Ts>
+            struct is_incrementable<std::tuple<Ts...>, void> {
+                static constexpr bool value = (is_incrementable<Ts>::value && ...);
+            };
+
+            template<typename T>
+            constexpr inline bool is_incrementable_v = is_incrementable<T>::value;
 
             template<typename T, bool B>
             struct dereference {
@@ -220,11 +248,157 @@ namespace iterators {
         }
 
         /**
+         * @brief CRTP-class that provides additional pointer arithmetic operators synthesized from basic operators
+         * @details @copybrief
+         * Adds the following operators
+         * - postfix increment and decrement (requires the respective prefix operators)
+         * - array subscript operator[] (requires operator+ and dereference operator)
+         * - binary arithmetic operators (requires compound assignment operators)
+         * - inequality comparison (requires operator==)
+         * - less than or equal comparison (requires operator>)
+         * - greater than or equal comparison (requires operator<)
+         * @tparam Impl Base class
+         */
+        template<typename Impl>
+        struct SynthesizedOperators {
+
+            /**
+             * Array subscript operator
+             * @tparam Implementation SFINAE helper, do not specify explicitly
+             * @param n index
+             * @return *(*this + n)
+             */
+            template<REQUIRES_IMPL(Impl, *(INSTANCE_OF_IMPL + INSTANCE_OF(typename Implementation::difference_type)))>
+            constexpr auto operator[](typename Implementation::difference_type n) const
+            noexcept(noexcept(*(std::declval<Impl>() + n))) {
+                return *(this->getImpl() + n);
+            }
+
+            /**
+             * Postfix increment. Synthesized from prefix increment
+             * @tparam Implementation SFINAE helper, do not specify explicitly
+             * @return Instance of Impl
+             */
+            template<REQUIRES_IMPL(Impl, ++INSTANCE_OF_IMPL)>
+            constexpr Impl operator++(int)
+            noexcept(noexcept(++std::declval<Impl>()) && std::is_nothrow_copy_constructible_v<Impl>) {
+                auto tmp = this->getImpl();
+                this->getImpl().operator++();
+                return tmp;
+            }
+
+            /**
+             * Postfix decrement. Synthesized from prefix decrement
+             * @tparam Implementation SFINAE helper, do not specify explicitly
+             * @return Instance of Impl
+             */
+            template<REQUIRES_IMPL(Impl, --INSTANCE_OF_IMPL)>
+            constexpr Impl operator--(int)
+            noexcept(noexcept(--std::declval<Impl>()) && std::is_nothrow_copy_constructible_v<Impl>) {
+                auto tmp = this->getImpl();
+                this->getImpl().operator--();
+                return tmp;
+            }
+
+            /**
+             * Binary +plus operator. Synthesized from compound assignment operator+=
+             * @tparam Implementation SFINAE helper, do not specify explicitly
+             * @param it left hand side
+             * @param n right hand side
+             * @return Instance of Impl
+             */
+            template<REQUIRES_IMPL(Impl, INSTANCE_OF_IMPL += INSTANCE_OF(typename Implementation::difference_type)) >
+            friend constexpr auto operator+(Impl it, typename Implementation::difference_type n)
+            noexcept(noexcept(std::declval<Impl>() += n)) {
+                it += n;
+                return it;
+            }
+
+            /**
+             * Binary +plus operator. Synthesized from compound assignment operator+=
+             * @tparam Implementation SFINAE helper, do not specify explicitly
+             * @param n left hand side
+             * @param it right hand side
+             * @return Instance of Impl
+             */
+            template<REQUIRES_IMPL(Impl, INSTANCE_OF_IMPL += INSTANCE_OF(typename Implementation::difference_type))>
+            friend constexpr auto operator+(typename Implementation::difference_type n, Impl it)
+            noexcept(noexcept(std::declval<Impl>() += n)) {
+                it += n;
+                return it;
+            }
+
+            /**
+             * Binary minus operator. Synthesized from compound assignment operator-=
+             * @tparam Implementation SFINAE helper, do not specify explicitly
+             * @param it left hand side
+             * @param n right hand side
+             * @return Instance of Impl
+             */
+            template<REQUIRES_IMPL(Impl, INSTANCE_OF_IMPL -= INSTANCE_OF(typename Implementation::difference_type)) >
+            friend constexpr auto operator-(Impl it, typename Implementation::difference_type n)
+            noexcept(noexcept(std::declval<Impl>() -= n)) {
+                it -= n;
+                return it;
+            }
+
+            /**
+             * Inequality comparison
+             * @tparam T type of right hand side
+             * @tparam Implementation SFINAE helper, do not specify explicitly
+             * @param other right hand side
+             * @return true if this is not equal to other
+             */
+            template<typename T, REQUIRES_IMPL(Impl, INSTANCE_OF_IMPL == INSTANCE_OF(T))>
+            constexpr bool operator!=(const T &other) const noexcept(noexcept(INSTANCE_OF_IMPL == other)) {
+                return !(this->getImpl()== other);
+            }
+
+            /**
+             * Less than or equal comparison
+             * @tparam T type of right hand side
+             * @tparam Implementation SFINAE helper, do not specify explicitly
+             * @param other right hand side
+             * @return true if this is not greater than other
+             */
+            template<typename T, REQUIRES_IMPL(Impl, INSTANCE_OF_IMPL > INSTANCE_OF(T))>
+            constexpr bool operator<=(const T& rhs) const noexcept(noexcept(INSTANCE_OF_IMPL > rhs)) {
+                return !(this->getImpl()> rhs);
+            }
+
+            /**
+             * Greater than or equal comparison
+             * @tparam T type of right hand side
+             * @tparam Implementation SFINAE helper, do not specify explicitly
+             * @param other right hand side
+             * @return true if this is not less than other
+             */
+            template<typename T, REQUIRES_IMPL(Impl, INSTANCE_OF_IMPL < INSTANCE_OF(T))>
+            constexpr bool operator>=(const T& rhs) const noexcept(noexcept(INSTANCE_OF_IMPL < rhs)) {
+                return !(this->getImpl() < rhs);
+            }
+
+        private:
+            constexpr Impl &getImpl() noexcept {
+                return static_cast<Impl &>(*this);
+            }
+
+            constexpr const Impl &getImpl() const noexcept {
+                return static_cast<const Impl &>(*this);
+            }
+
+            SynthesizedOperators() = default;
+            friend Impl;
+        };
+
+        /**
          * @brief Class combining multiple iterators into one. Use it to iterate over multiple ranges at the same time.
          * @details @copybrief
          * ZipIterators only support the operators of the least powerful underling iterator. Zipping a random access
          * iterator (e.g. from std::vector) and a bidirectional iterator (e.g. from std::list) results in a
-         * bidirectional iterator. ZipIterators return a tuple of references to the range elements. When using
+         * bidirectional iterator. All operators are SFINAE friendly.
+         *
+         * ZipIterators return a tuple of references to the range elements. When using
          * structured bindings, no additional reference binding is necessary.
          *
          * Let ```z``` be a ZipIterator composed from two ```std::vector<int>```
@@ -235,12 +409,26 @@ namespace iterators {
          * @tparam Iterators Underlying iterator types
          */
         template<typename Iterators>
-        class ZipIterator : public traits::iterator_category_from_value<traits::minimum_category_v<Iterators>> {
+        class ZipIterator
+                : public traits::iterator_category_from_value<traits::minimum_category_v<Iterators>>,
+                  public SynthesizedOperators<ZipIterator<Iterators>> {
+
         public:
             using value_type = traits::values_t<Iterators>;
             using reference = value_type;
             using pointer = void;
             using difference_type = std::ptrdiff_t;
+
+        private:
+            BINARY_TUPLE_FOR_EACH_FOLD(ELEMENT1 == ELEMENT2, ||, oneEqual)
+            BINARY_TUPLE_FOR_EACH_FOLD(ELEMENT1 < ELEMENT2, &&, allLess)
+            BINARY_TUPLE_FOR_EACH_FOLD(ELEMENT1 > ELEMENT2, &&, allGreater)
+            BINARY_TUPLE_FOR_EACH(std::min<difference_type>({ELEMENT1 - ELEMENT2 ...}), minDifference)
+            Iterators iterators;
+
+        public:
+            using SynthesizedOperators<ZipIterator>::operator++;
+            using SynthesizedOperators<ZipIterator>::operator--;
 
             explicit constexpr ZipIterator(
                     const Iterators &iterators) noexcept(std::is_nothrow_copy_constructible_v<Iterators>)
@@ -251,21 +439,13 @@ namespace iterators {
 
             /**
              * Increments all underlying iterators by one
-             * @return
+             * @tparam Its SFINAE guard, do not specify
+             * @return reference to this
              */
+            template<typename Its = Iterators, typename = std::enable_if_t<traits::is_incrementable_v<Its>>>
             constexpr ZipIterator &operator++() noexcept(traits::is_nothrow_incrementible_v<Iterators>) {
                 std::apply([](auto &&...it) { (++it, ...); }, iterators);
                 return *this;
-            }
-
-            /**
-             * Post increment. Increments all underlying iterators by one
-             * @return
-             */
-            constexpr ZipIterator operator++(int) noexcept(traits::is_nothrow_incrementible_v<Iterators>) {
-                ZipIterator tmp = *this;
-                ++*this;
-                return tmp;
             }
 
             /**
@@ -278,28 +458,14 @@ namespace iterators {
             /**
              * Decrements all underlying iterators by one. Only available if all iterators support at least
              * bidirectional access
-             * @tparam IsBidirectional
-             * @return
+             * @tparam IsBidirectional SFINAE guard, do not specify
+             * @return reference to this
              */
             template<bool IsBidirectional = traits::is_bidirectional_v<Iterators>>
             constexpr auto operator--() noexcept(traits::is_nothrow_decrementible_v<Iterators>)
                 -> std::enable_if_t<IsBidirectional, ZipIterator &> {
                 std::apply([](auto &&...it) { (--it, ...); }, iterators);
                 return *this;
-            }
-
-            /**
-             * Post decrement. Decrements all underlying iterators by one. Only available if all iterators support at
-             * least bidirectional access
-             * @tparam IsBidirectional
-             * @return
-             */
-            template<bool IsBidirectional = traits::is_bidirectional_v<Iterators>>
-            constexpr auto operator--(int) noexcept(traits::is_nothrow_decrementible_v<Iterators>)
-                -> std::enable_if_t<IsBidirectional, ZipIterator> {
-                ZipIterator tmp = *this;
-                --*this;
-                return tmp;
             }
 
             ///@}
@@ -314,9 +480,9 @@ namespace iterators {
             /**
              * Compound assignment increment. Increments all underlying iterators by n. Only available if all underlying
              * iterators support at least random access
-             * @tparam IsRandomAccessible
-             * @param n
-             * @return
+             * @tparam IsRandomAccessible SFINAE guard, do not specify
+             * @param n increment
+             * @return reference to this
              */
             template<bool IsRandomAccessible = traits::is_random_accessible_v<Iterators>>
             constexpr auto operator+=(difference_type n) noexcept(traits::is_nothrow_compound_assignable_plus_v<Iterators>)
@@ -328,9 +494,9 @@ namespace iterators {
             /**
              * Compound assignment decrement. Decrements all underlying iterators by n. Only available if all underlying
              * iterators support at least random access
-             * @tparam IsRandomAccessible
-             * @param n
-             * @return
+             * @tparam IsRandomAccessible SFINAE guard, do not specify
+             * @param n decrement
+             * @return reference to this
              */
             template<bool IsRandomAccessible = traits::is_random_accessible_v<Iterators>>
             constexpr auto operator-=(difference_type n) noexcept(traits::is_nothrow_compound_assignable_minus_v<Iterators>)
@@ -340,185 +506,83 @@ namespace iterators {
             }
 
             /**
-             * Returns a ZipIterator where all underlying iterators are incremented by n. Only available if all
-             * underlying iterators support at least random access
-             * @tparam IsRandomAccessible
-             * @param n
-             * @return
-             */
-            template<bool IsRandomAccessible = traits::is_random_accessible_v<Iterators>>
-            friend constexpr auto operator+(ZipIterator it, difference_type n)
-            noexcept(traits::is_nothrow_compound_assignable_plus_v<Iterators>)
-            -> std::enable_if_t<IsRandomAccessible, ZipIterator> {
-                it += n;
-                return it;
-            }
-
-            /**
-             * Returns a ZipIterator where all underlying iterators are incremented by n. Only available if all
-             * underlying iterators support at least random access
-             * @tparam IsRandomAccessible
-             * @param n
-             * @return
-             */
-            template<bool IsRandomAccessible = traits::is_random_accessible_v<Iterators>>
-            friend constexpr auto operator+(difference_type n, ZipIterator it)
-            noexcept(traits::is_nothrow_compound_assignable_plus_v<Iterators>)
-            -> std::enable_if_t<IsRandomAccessible, ZipIterator> {
-                it += n;
-                return it;
-            }
-
-            /**
-             * Returns a ZipIterator where all underlying iterators are decremented by n. Only available if all
-             * underlying iterators support at least random access
-             * @tparam IsRandomAccessible
-             * @param n
-             * @return
-             */
-            template<bool IsRandomAccessible = traits::is_random_accessible_v<Iterators>>
-            friend constexpr auto operator-(ZipIterator it, difference_type n)
-            noexcept(traits::is_nothrow_compound_assignable_minus_v<Iterators>)
-            -> std::enable_if_t<IsRandomAccessible, ZipIterator> {
-                it -= n;
-                return it;
-            }
-
-            /**
              * Returns the minimum pairwise difference n between all underlying iterators of *this and other, such that
-             * other + n == *this
+             * (other + n) == *this
              * Only available if all underlying iterators support at least random access
-             * @tparam IsRandomAccessible
-             * @param other
-             * @return
+             * @tparam Its Iterator types of right hand side
+             * @tparam IsRandomAccessible SFINAE guard, do not specify
+             * @param other right hand side
+             * @return integer n such that (other + n) == *this
              */
-            template<bool IsRandomAccessible = traits::is_random_accessible_v<Iterators>>
-            constexpr auto operator-(const ZipIterator &other) const
-            noexcept(noexcept(ZipIterator::minDifference(std::declval<Iterators>(), other.iterators)))
+            template<typename Its, bool IsRandomAccessible = traits::is_random_accessible_v<Iterators>, REQUIRES(
+                    ZipIterator::minDifference(INSTANCE_OF(Iterators), INSTANCE_OF(Its)))>
+            constexpr auto operator-(const ZipIterator<Its> &other) const
             -> std::enable_if_t<IsRandomAccessible, difference_type> {
-                return minDifference(iterators, other.iterators);
+                return minDifference(iterators, other.getIterators());
             }
 
             /**
-             * Given a ZipIterator it, returns *(it + n)
+             * Pairwise less comparison of underlying iterators
              * Only available if all underlying iterators support at least random access
-             * @tparam IsRandomAccessible
-             * @param n
-             * @return
+             * @tparam Its Iterator types of right hand side
+             * @tparam IsRandomAccessible SFINAE guard, do not specify
+             * @param other right hand side
+             * @return true if all underlying iterators compare less to the corresponding iterators from other
              */
-            template<bool IsRandomAccessible = traits::is_random_accessible_v<Iterators>>
-            constexpr auto operator[](difference_type n) const noexcept(noexcept(*(std::declval<ZipIterator>() + n)))
-            -> std::enable_if_t<IsRandomAccessible, reference> {
-                return *(*this + n);
+            template<typename Its, bool IsRandomAccessible = traits::is_random_accessible_v<Iterators>, REQUIRES(
+                    ZipIterator::allLess(INSTANCE_OF(Iterators), INSTANCE_OF(Its)))>
+            constexpr auto operator<(const ZipIterator<Its> &other) const
+            noexcept(noexcept(ZipIterator::allLess(INSTANCE_OF(Iterators), INSTANCE_OF(Its))))
+            -> std::enable_if_t<IsRandomAccessible, bool> {
+                return allLess(iterators, other.getIterators());
             }
 
             /**
-             * Returns true if all underlying iterators compare less to the corresponding iterators from other
+             * Pairwise grater comparison of underlying iterators
              * Only available if all underlying iterators support at least random access
-             * @tparam IsRandomAccessible
-             * @param other
-             * @return
+             * @tparam Its Iterator types of right hand side
+             * @tparam IsRandomAccessible SFINAE guard, do not specify
+             * @param other right hand side
+             * @return true if all underlying iterators compare greater to the corresponding iterators from other
              */
-            template<bool IsRandomAccessible = traits::is_random_accessible_v<Iterators>>
-            constexpr auto operator<(const ZipIterator &other) const
-            noexcept(noexcept(ZipIterator::allLess(std::declval<Iterators>(),
-                                                   other.iterators))) -> std::enable_if_t<IsRandomAccessible, bool> {
-                return allLess(iterators, other.iterators);
-            }
-
-            /**
-             * Returns true if all underlying iterators compare greater to the corresponding iterators from other
-             * Only available if all underlying iterators support at least random access
-             * @tparam IsRandomAccessible
-             * @param other
-             * @return
-             */
-            template<bool IsRandomAccessible = traits::is_random_accessible_v<Iterators>>
-            constexpr auto operator>(const ZipIterator &other) const
-            noexcept(noexcept(ZipIterator::allGreater(std::declval<Iterators>(),
-                                                      other.iterators))) -> std::enable_if_t<IsRandomAccessible, bool> {
-                return allGreater(iterators, other.iterators);
-            }
-
-            /**
-             * Returns true if all underlying iterators compare less or equal to the corresponding iterators from
-             * other. Only available if all underlying iterators support at least random access
-             * @tparam IsRandomAccessible
-             * @param other
-             * @return
-             */
-            template<bool IsRandomAccessible = traits::is_random_accessible_v<Iterators>>
-            constexpr auto operator<=(const ZipIterator &other) const
-            noexcept(noexcept(std::declval<ZipIterator>() > other)) -> std::enable_if_t<IsRandomAccessible, bool> {
-                return !(*this > other);
-            }
-
-            /**
-             * Returns true if all underlying iterators compare greater or equal to the corresponding iterators from
-             * other. Only available if all underlying iterators support at least random access
-             * @tparam IsRandomAccessible
-             * @param other
-             * @return
-             */
-            template<bool IsRandomAccessible = traits::is_random_accessible_v<Iterators>>
-            constexpr auto operator>=(const ZipIterator &other) const
-            noexcept(noexcept(std::declval<ZipIterator>() < other)) -> std::enable_if_t<IsRandomAccessible, bool> {
-                return !(*this < other);
+            template<typename Its, bool IsRandomAccessible = traits::is_random_accessible_v<Iterators>, REQUIRES(
+                    ZipIterator::allGreater(INSTANCE_OF(Iterators), INSTANCE_OF(Its))) >
+            constexpr auto operator>(const ZipIterator<Its> &other) const noexcept(noexcept(ZipIterator::allGreater(
+                    INSTANCE_OF(Iterators), INSTANCE_OF(Its)))) -> std::enable_if_t<IsRandomAccessible, bool> {
+                return allGreater(iterators, other.getIterators());
             }
 
             ///@}
 
             /**
-             * Returns true if at least one underlying iterator compares equal to the corresponding iterator from
-             * other.
-             * @tparam Its
-             * @param other
-             * @return
+             * Pairwise equality comparison of underlying iterators
+             * @tparam Its Iterator types of right hand side
+             * @param other right hand side
+             * @return true if at least one underlying iterator compares equal to the corresponding iterator from other
              */
-            template<typename Its>
+            template<typename Its, REQUIRES(ZipIterator::oneEqual(INSTANCE_OF(Iterators), INSTANCE_OF(Its)))>
             constexpr bool operator==(const ZipIterator<Its> &other) const
             noexcept(noexcept(ZipIterator::oneEqual(std::declval<Iterators>(), other.getIterators()))) {
                 return oneEqual(iterators, other.getIterators());
             }
 
             /**
-             * True if *this is not equal to other
-             * @tparam Its
-             * @param other
-             * @return
+             * Dereferences all underlying iterators and returns a tuple of the resulting range reference types
+             * @tparam Its SFINAE guard, do not specify
+             * @return tuple of references to range elements
              */
-            template<typename Its>
-            constexpr bool operator!=(const ZipIterator<Its> &other) const
-            noexcept(noexcept(std::declval<ZipIterator>() == other)) {
-                return !(*this == other);
-            }
-
-            /**
-             * Dereferences all underlying iterators and returns a tuple of the resulting iterator reference types
-             * @return
-             */
+            template<typename Its = Iterators, typename = std::enable_if_t<traits::is_dereferencible_v<Its>>>
             constexpr auto operator*() const noexcept(traits::is_nothrow_dereferencible_v<Iterators>) {
                 return std::apply([](auto &&...it) { return value_type(*it...); }, iterators);
             }
 
             /**
-             * Const reference to underlying iterators
-             * @return
+             * Getter for underlying iterators
+             * @return Const reference to underlying iterators
              */
             constexpr auto getIterators() const noexcept -> const Iterators& {
                 return iterators;
             }
-
-        private:
-            BINARY_TUPLE_FOR_EACH_FOLD(ELEMENT1 == ELEMENT2, ||, oneEqual)
-
-            BINARY_TUPLE_FOR_EACH_FOLD(ELEMENT1 < ELEMENT2, &&, allLess)
-
-            BINARY_TUPLE_FOR_EACH_FOLD(ELEMENT1 > ELEMENT2, &&, allGreater)
-
-            BINARY_TUPLE_FOR_EACH(std::min<difference_type>({ELEMENT1 - ELEMENT2 ...}), minDifference)
-
-            Iterators iterators;
         };
 
         /**
@@ -598,6 +662,12 @@ namespace iterators {
          */
         struct Unreachable {};
 
+        /**
+         * Signum function
+         * @tparam T arbitrary scalar type
+         * @param val function argument
+         * @return +1 if val >= 0, -1 else
+         */
         template<typename T>
         constexpr T sgn(T val) noexcept {
             return val < 0 ? T(-1) : T(1);
@@ -608,13 +678,16 @@ namespace iterators {
          * @tparam Type of the counter (most of the time this is ```std::size_t```)
          */
         template<typename T>
-        struct CounterIterator {
+        struct CounterIterator : public SynthesizedOperators<CounterIterator<T>> {
             using value_type = T;
             using reference = T;
             using pointer = void;
             using iterator_category = std::random_access_iterator_tag;
             using difference_type = std::ptrdiff_t;
             static_assert(std::is_integral_v<T> && !std::is_floating_point_v<T>);
+
+            using SynthesizedOperators<CounterIterator<T>>::operator++;
+            using SynthesizedOperators<CounterIterator<T>>::operator--;
 
             /**
              * CTor.
@@ -635,34 +708,12 @@ namespace iterators {
             }
 
             /**
-             * Post increment
-             *
-             * @copydoc CounterIterator::operator++
-             */
-            constexpr CounterIterator operator++(int) noexcept {
-                CounterIterator tmp = *this;
-                ++*this;
-                return tmp;
-            }
-
-            /**
              * Decrements value by increment
              * @return
              */
             constexpr CounterIterator &operator--() noexcept {
                 counter -= increment;
                 return *this;
-            }
-
-            /**
-             * Post decrement
-             *
-             * @copydoc CounterIterator::operator--
-             */
-            constexpr CounterIterator operator--(int) noexcept {
-                CounterIterator tmp = *this;
-                --*this;
-                return tmp;
             }
 
             /**
@@ -676,43 +727,13 @@ namespace iterators {
             }
 
             /**
-             * Returns a CounterIterator where the counter is incremented by n times increment
-             * @param it Instance of CounterIterator
-             * @param n number of steps
-             * @return
-             */
-            friend constexpr CounterIterator operator+(CounterIterator it, difference_type n) noexcept {
-                it += n;
-                return it;
-            }
-
-            /**
-             * @copydoc operator+
-             */
-            friend constexpr CounterIterator operator+(difference_type n, CounterIterator it) noexcept {
-                it += n;
-                return it;
-            }
-
-            /**
-             * Compound assignment increment. Increments value by n times increment
+             * Compound assignment decrement. Increments value by n times increment
              * @param n number of steps
              * @return
              */
             constexpr CounterIterator &operator-=(difference_type n) noexcept {
                 counter -= n * increment;
                 return *this;
-            }
-
-            /**
-             * Returns a CounterIterator where the counter is incremented by n times increment
-             * @param it Instance of CounterIterator
-             * @param n number of steps
-             * @return
-             */
-            friend constexpr CounterIterator operator-(CounterIterator it, difference_type n) noexcept {
-                it -= n;
-                return it;
             }
 
             /**
@@ -732,15 +753,6 @@ namespace iterators {
             }
 
             /**
-             * Given a CounterIterator ```it``` returns ```*(it + n)```
-             * @param n  number of steps
-             * @return
-             */
-            constexpr reference operator[](difference_type n) const noexcept {
-                return counter + n * increment;
-            }
-
-            /**
              * Equality comparison.
              * @param other
              * @return true if counter of left and right hand side are equal
@@ -750,38 +762,22 @@ namespace iterators {
             }
 
             /**
-             * Equality comparison with unreachable sentinel
+             * Equality comparison with Unreachable sentinel
              * @return false
              */
-            constexpr bool operator==(Unreachable) const noexcept {
+            friend constexpr bool operator==(const CounterIterator &, Unreachable) noexcept {
                 return false;
             }
 
             /**
-             * Inequality comparison.
-             * @tparam It Type of right hand side
-             * @param other
-             * @return true if counter of left and right hand side are not equal
+             * @copydoc operator==(const CounterIterator &, Unreachable)
              */
-            template<typename It>
-            constexpr bool operator!=(const It &other) const noexcept {
-                return !(*this == other);
+            friend constexpr bool operator==(Unreachable, const CounterIterator &) noexcept {
+                return false;
             }
 
-            /**
-             * Less than comparison with Unreachable sentinel
-             * @return true
-             */
-            constexpr bool operator<(Unreachable) const noexcept {
+            friend constexpr bool operator!=(Unreachable, const CounterIterator &) noexcept {
                 return true;
-            }
-
-            /**
-             * Greater than comparison with Unreachable sentinel
-             * @return false
-             */
-            constexpr bool operator>(Unreachable) const noexcept {
-                return false;
             }
 
             /**
@@ -808,28 +804,6 @@ namespace iterators {
              */
             constexpr bool operator>(const CounterIterator &other) const noexcept {
                 return sgn(increment) * counter > sgn(increment) * other.counter;
-            }
-
-            /**
-             * Less or equal comparison
-             * @tparam type of right hand side
-             * @param other
-             * @return true if left hand side is not greater than right hand side
-             */
-            template<typename It>
-            constexpr bool operator<=(const It &other) const noexcept {
-                return !(*this > other);
-            }
-
-            /**
-             * Greater or equal comparison
-             * @tparam type of right hand side
-             * @param other
-             * @return true if left hand side is not less than right hand side
-             */
-            template<typename It>
-            constexpr bool operator>=(const It &other) const noexcept {
-                return !(*this < other);
             }
 
             /**
