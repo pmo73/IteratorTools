@@ -577,8 +577,8 @@ namespace iterators {
             }
 
             /**
-             * Const reference to underlying iterators
-             * @return
+             * Getter for underlying iterators
+             * @return Const reference to underlying iterators
              */
             constexpr auto getIterators() const noexcept -> const Iterators& {
                 return iterators;
