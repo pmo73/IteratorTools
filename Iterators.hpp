@@ -257,6 +257,25 @@ namespace iterators {
         }
 
         /**
+         * Helper class for implementing CRTP classes
+         * @tparam Impl
+         * @tparam CrtpClass
+         */
+        template<typename Impl, template<typename> typename CrtpClass>
+        struct Crtp {
+            constexpr Impl &getImpl() noexcept {
+                return static_cast<Impl &>(*this);
+            }
+
+            constexpr const Impl &getImpl() const noexcept {
+                return static_cast<const Impl &>(*this);
+            }
+        private:
+            Crtp() = default;
+            friend CrtpClass<Impl>;
+        };
+
+        /**
          * @brief CRTP-class that provides additional pointer arithmetic operators synthesized from basic operators
          * @details @copybrief
          * Adds the following operators
@@ -266,7 +285,7 @@ namespace iterators {
          * @tparam Impl Base class
          */
         template<typename Impl>
-        struct PointerArithmetics {
+        struct PointerArithmetics : Crtp<Impl, PointerArithmetics> {
 
             /**
              * Array subscript operator
@@ -350,13 +369,6 @@ namespace iterators {
 
 
         private:
-            constexpr Impl &getImpl() noexcept {
-                return static_cast<Impl &>(*this);
-            }
-
-            constexpr const Impl &getImpl() const noexcept {
-                return static_cast<const Impl &>(*this);
-            }
             PointerArithmetics() = default;
             friend Impl;
         };
@@ -374,7 +386,7 @@ namespace iterators {
          * @tparam Comp Operand type used in comparison
          */
         template<typename Impl>
-        struct ComparisonOperators {
+        struct ComparisonOperators : Crtp<Impl, ComparisonOperators> {
             /**
              * Inequality comparison
              * @tparam T type of right hand side
@@ -384,7 +396,7 @@ namespace iterators {
              */
             template<typename T, REQUIRES_IMPL(Impl, INSTANCE_OF_IMPL == INSTANCE_OF(T))>
             constexpr bool operator!=(const T &other) const noexcept(noexcept(INSTANCE_OF_IMPL == other)) {
-                return !(getImpl()== other);
+                return !(this->getImpl()== other);
             }
 
             /**
@@ -396,7 +408,7 @@ namespace iterators {
              */
             template<typename T, REQUIRES_IMPL(Impl, INSTANCE_OF_IMPL > INSTANCE_OF(T))>
             constexpr bool operator<=(const T& rhs) const noexcept(noexcept(INSTANCE_OF_IMPL > rhs)) {
-                return !(getImpl()> rhs);
+                return !(this->getImpl()> rhs);
             }
 
             /**
@@ -408,17 +420,10 @@ namespace iterators {
              */
             template<typename T, REQUIRES_IMPL(Impl, INSTANCE_OF_IMPL < INSTANCE_OF(T))>
             constexpr bool operator>=(const T& rhs) const noexcept(noexcept(INSTANCE_OF_IMPL < rhs)) {
-                return !(getImpl() < rhs);
+                return !(this->getImpl() < rhs);
             }
 
         private:
-            constexpr Impl &getImpl() noexcept {
-                return static_cast<Impl &>(*this);
-            }
-
-            constexpr const Impl &getImpl() const noexcept {
-                return static_cast<const Impl &>(*this);
-            }
             ComparisonOperators() = default;
             friend Impl;
         };
