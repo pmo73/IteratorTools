@@ -2,7 +2,7 @@ name: documentation
 
 on:
   push:
-    branches: [ "DoxyMainPage" ]
+    branches: [ "master" ]
   workflow_dispatch:
 
 env:
