@@ -245,35 +245,7 @@ namespace iterators {
 
             template<typename T>
             constexpr inline bool is_bidirectional_v = is_bidirectional<T>::value;
-
-            template<typename T, typename U>
-            struct same_templates : std::false_type {};
-
-            template<template<typename> typename TC, typename T, typename U>
-            struct same_templates<TC<T>, TC<U>> : std::true_type {};
-
-            template<typename T, typename U>
-            constexpr inline bool same_templates_v = same_templates<T, U>::value;
         }
-
-        /**
-         * Helper class for implementing CRTP classes
-         * @tparam Impl
-         * @tparam CrtpClass
-         */
-        template<typename Impl, template<typename> typename CrtpClass>
-        struct Crtp {
-            constexpr Impl &getImpl() noexcept {
-                return static_cast<Impl &>(*this);
-            }
-
-            constexpr const Impl &getImpl() const noexcept {
-                return static_cast<const Impl &>(*this);
-            }
-        private:
-            Crtp() = default;
-            friend CrtpClass<Impl>;
-        };
 
         /**
          * @brief CRTP-class that provides additional pointer arithmetic operators synthesized from basic operators
@@ -282,10 +254,13 @@ namespace iterators {
          * - postfix increment and decrement (requires the respective prefix operators)
          * - array subscript operator[] (requires operator+ and dereference operator)
          * - binary arithmetic operators (requires compound assignment operators)
+         * - inequality comparison (requires operator==)
+         * - less than or equal comparison (requires operator>)
+         * - greater than or equal comparison (requires operator<)
          * @tparam Impl Base class
          */
         template<typename Impl>
-        struct PointerArithmetics : Crtp<Impl, PointerArithmetics> {
+        struct SynthesizedOperators {
 
             /**
              * Array subscript operator
@@ -367,26 +342,6 @@ namespace iterators {
                 return it;
             }
 
-
-        private:
-            PointerArithmetics() = default;
-            friend Impl;
-        };
-
-        /**
-         * @brief CRTP-class that provides additional comparison operators synthesized from basic operators
-         * @details @copybrief
-         *
-         * Adds the following operators
-         * - inequality comparison (requires operator==)
-         * - less than or equal comparison (requires operator>)
-         * - greater than or equal comparison (requires operator<)
-         * @note this class cannot be instantiated
-         * @tparam Impl Base class
-         * @tparam Comp Operand type used in comparison
-         */
-        template<typename Impl>
-        struct ComparisonOperators : Crtp<Impl, ComparisonOperators> {
             /**
              * Inequality comparison
              * @tparam T type of right hand side
@@ -424,10 +379,17 @@ namespace iterators {
             }
 
         private:
-            ComparisonOperators() = default;
+            constexpr Impl &getImpl() noexcept {
+                return static_cast<Impl &>(*this);
+            }
+
+            constexpr const Impl &getImpl() const noexcept {
+                return static_cast<const Impl &>(*this);
+            }
+
+            SynthesizedOperators() = default;
             friend Impl;
         };
-
 
         /**
          * @brief Class combining multiple iterators into one. Use it to iterate over multiple ranges at the same time.
@@ -447,8 +409,7 @@ namespace iterators {
         template<typename Iterators>
         class ZipIterator
                 : public traits::iterator_category_from_value<traits::minimum_category_v<Iterators>>,
-                  public ComparisonOperators<ZipIterator<Iterators>>,
-                  public PointerArithmetics<ZipIterator<Iterators>> {
+                  public SynthesizedOperators<ZipIterator<Iterators>> {
 
         public:
             using value_type = traits::values_t<Iterators>;
@@ -464,8 +425,8 @@ namespace iterators {
             Iterators iterators;
 
         public:
-            using PointerArithmetics<ZipIterator>::operator++;
-            using PointerArithmetics<ZipIterator>::operator--;
+            using SynthesizedOperators<ZipIterator>::operator++;
+            using SynthesizedOperators<ZipIterator>::operator--;
 
             explicit constexpr ZipIterator(
                     const Iterators &iterators) noexcept(std::is_nothrow_copy_constructible_v<Iterators>)
@@ -712,8 +673,7 @@ namespace iterators {
          * @tparam Type of the counter (most of the time this is ```std::size_t```)
          */
         template<typename T>
-        struct CounterIterator : public ComparisonOperators<CounterIterator<T>>,
-                                 public PointerArithmetics<CounterIterator<T>> {
+        struct CounterIterator : public SynthesizedOperators<CounterIterator<T>> {
             using value_type = T;
             using reference = T;
             using pointer = void;
@@ -721,8 +681,8 @@ namespace iterators {
             using difference_type = std::ptrdiff_t;
             static_assert(std::is_integral_v<T> && !std::is_floating_point_v<T>);
 
-            using PointerArithmetics<CounterIterator<T>>::operator++;
-            using PointerArithmetics<CounterIterator<T>>::operator--;
+            using SynthesizedOperators<CounterIterator<T>>::operator++;
+            using SynthesizedOperators<CounterIterator<T>>::operator--;
 
             /**
              * CTor.
