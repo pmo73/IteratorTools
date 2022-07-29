@@ -24,7 +24,7 @@ jobs:
           mv README_tmp.md README.md
           doxygen .github/workflows/Doxyfile
       - name: build pdf
-        run: cd ${{ env.DOCS_OUT_DIR }}/latex && make
+        run: cd ${{ env.DOCS_OUT_DIR }}/latex && make && mv refman.pdf ../ZipEnumerateCppDocs.pdf && make clean
       - name: deploy
         uses: JamesIves/github-pages-deploy-action@v4
         with:
