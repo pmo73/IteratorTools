@@ -1,0 +1,58 @@
+\hypertarget{namespaceiterators_1_1impl}{}\doxysubsection{iterators\+::impl Namespace Reference}
+\label{namespaceiterators_1_1impl}\index{iterators::impl@{iterators::impl}}
+
+
+namespace containing structures and helpers used to implement zip and enumerate. Normally there is no need to use any of its members directly  
+
+
+\doxysubsubsection*{Namespaces}
+\begin{DoxyCompactItemize}
+\item 
+ \mbox{\hyperlink{namespaceiterators_1_1impl_1_1traits}{traits}}
+\begin{DoxyCompactList}\small\item\em namespace containing type traits used in implementation of zip and enumerate \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \mbox{\hyperlink{structiterators_1_1impl_1_1SynthesizedOperators}{Synthesized\+Operators}}
+\begin{DoxyCompactList}\small\item\em CRTP-\/class that provides additional pointer arithmetic operators synthesized from basic operators. \end{DoxyCompactList}\item 
+class \mbox{\hyperlink{classiterators_1_1impl_1_1ZipIterator}{Zip\+Iterator}}
+\begin{DoxyCompactList}\small\item\em Class combining multiple iterators into one. Use it to iterate over multiple ranges at the same time. \end{DoxyCompactList}\item 
+struct \mbox{\hyperlink{structiterators_1_1impl_1_1ZipView}{Zip\+View}}
+\begin{DoxyCompactList}\small\item\em Zip-\/view that provides \mbox{\hyperlink{structiterators_1_1impl_1_1ZipView_a504806e68e74b7542545a6f775dc41f6}{begin()}} and \mbox{\hyperlink{structiterators_1_1impl_1_1ZipView_a6a4b14115b7e488021e4efea81bc496f}{end()}} member functions. Use to loop over multiple ranges at the same time using ranged based for-\/loops. \end{DoxyCompactList}\item 
+struct \mbox{\hyperlink{structiterators_1_1impl_1_1Unreachable}{Unreachable}}
+\begin{DoxyCompactList}\small\item\em represents the unreachable end of an infinite sequence \end{DoxyCompactList}\item 
+struct \mbox{\hyperlink{structiterators_1_1impl_1_1CounterIterator}{Counter\+Iterator}}
+\begin{DoxyCompactList}\small\item\em Iterator of an infinite sequence of numbers. Simply increments an internal counter. \end{DoxyCompactList}\item 
+struct \mbox{\hyperlink{structiterators_1_1impl_1_1CounterRange}{Counter\+Range}}
+\begin{DoxyCompactList}\small\item\em Represents an infinite range of numbers. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+{\footnotesize template$<$typename T $>$ }\\constexpr T \mbox{\hyperlink{namespaceiterators_1_1impl_a4a6de0fc2d081e6c204370100dd4d658}{sgn}} (T val) noexcept
+\end{DoxyCompactItemize}
+
+
+\doxysubsubsection{Detailed Description}
+namespace containing structures and helpers used to implement zip and enumerate. Normally there is no need to use any of its members directly 
+
+\doxysubsubsection{Function Documentation}
+\mbox{\Hypertarget{namespaceiterators_1_1impl_a4a6de0fc2d081e6c204370100dd4d658}\label{namespaceiterators_1_1impl_a4a6de0fc2d081e6c204370100dd4d658}} 
+\index{iterators::impl@{iterators::impl}!sgn@{sgn}}
+\index{sgn@{sgn}!iterators::impl@{iterators::impl}}
+\doxyparagraph{\texorpdfstring{sgn()}{sgn()}}
+{\footnotesize\ttfamily template$<$typename T $>$ \\
+constexpr T iterators\+::impl\+::sgn (\begin{DoxyParamCaption}\item[{T}]{val }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [constexpr]}, {\ttfamily [noexcept]}}
+
+Signum function 
+\begin{DoxyTemplParams}{Template Parameters}
+{\em T} & arbitrary scalar type \\
+\hline
+\end{DoxyTemplParams}
+
+\begin{DoxyParams}{Parameters}
+{\em val} & function argument \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
++1 if val $>$= 0, -\/1 else 
+\end{DoxyReturn}
